@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-06-27T08:04:02.072074+00:00",
+  "ok": true,
+  "queries": {
+    "connection_smoke": {
+      "rows": 1,
+      "columns": [
+        "TS",
+        "DATABASE_NAME",
+        "SCHEMA_NAME"
+      ],
+      "csv": "data/snowflake_connection_smoke.csv"
+    },
+    "core_source_counts": {
+      "rows": 5,
+      "columns": [
+        "METRIC",
+        "VALUE"
+      ],
+      "csv": "data/snowflake_core_source_counts.csv"
+    },
+    "taskvanilla_event_counts": {
+      "rows": 3,
+      "columns": [
+        "EVENT_NAME",
+        "EVENT_ROWS",
+        "DISTINCT_MOBILES",
+        "DISTINCT_PARTNERS",
+        "LATEST_ADDED_TIME"
+      ],
+      "csv": "data/snowflake_taskvanilla_event_counts.csv"
+    },
+    "source_table_metadata": {
+      "rows": 120,
+      "columns": [
+        "TABLE_SCHEMA",
+        "TABLE_NAME",
+        "ROW_COUNT",
+        "BYTES",
+        "CREATED",
+        "LAST_ALTERED"
+      ],
+      "csv": "data/snowflake_source_table_metadata.csv"
+    }
+  },
+  "errors": {}
+}

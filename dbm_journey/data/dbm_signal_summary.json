@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-06-27T08:14:02.390111+00:00",
+  "ok": true,
+  "files": {
+    "dbm_signal_column_inventory": "data/dbm_signal_column_inventory.csv",
+    "dbm_signal_table_inventory": "data/dbm_signal_table_inventory.csv",
+    "dbm_signal_sample_manifest": "data/dbm_signal_sample_manifest.csv",
+    "optical_signal_latest_health": "data/dbm_optical_signal_latest_health.csv",
+    "optical_signal_daily_trend": "data/dbm_optical_signal_daily_trend.csv",
+    "optical_oor_pct_trend": "data/dbm_optical_oor_pct_trend.csv",
+    "optical_device_worst_sample": "data/dbm_optical_device_worst_sample.csv",
+    "hourly_device_ping_optical_daily": "data/dbm_hourly_device_ping_optical_daily.csv",
+    "gx_router_rx_power_daily": "data/dbm_gx_router_rx_power_daily.csv",
+    "router_details_power_profile": "data/dbm_router_details_power_profile.csv",
+    "router_details_power_sample": "data/dbm_router_details_power_sample.csv",
+    "taskvanilla_opticalpower_events": "data/dbm_taskvanilla_opticalpower_events.csv",
+    "partner_ont_rollup": "data/dbm_partner_ont_rollup.csv",
+    "partner_ont_top": "data/dbm_partner_ont_top.csv",
+    "booking_ont_distribution": "data/dbm_booking_ont_distribution.csv",
+    "incentive_optical_power_profile": "data/dbm_incentive_optical_power_profile.csv",
+    "relevant_network_table_counts": "data/dbm_relevant_network_table_counts.csv",
+    "olt_column_inventory": "data/dbm_olt_column_inventory.csv"
+  },
+  "errors": {}
+}

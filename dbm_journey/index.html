@@ -1,0 +1,2448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GPON / FTTH Whiteboard Notes</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172026;
+      --muted: #64717d;
+      --line: #d9e1e8;
+      --paper: #f7f9fb;
+      --panel: #ffffff;
+      --blue: #1f6feb;
+      --blue-soft: #e8f1ff;
+      --green: #227a52;
+      --green-soft: #e9f7ef;
+      --orange: #a05612;
+      --orange-soft: #fff4e3;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+    }
+
+    * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    html,
+    body {
+      overflow-x: hidden;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 3.4rem;
+      max-width: 900px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    p,
+    li,
+    td,
+    th,
+    span,
+    strong,
+    b,
+    h1,
+    h2,
+    h3 {
+      overflow-wrap: anywhere;
+    }
+
+    .subhead {
+      max-width: 860px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    section {
+      margin-top: 24px;
+    }
+
+    .panel,
+    .photo,
+    .note,
+    .formula,
+    .step,
+    .metric,
+    .warning {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .panel,
+    .note,
+    .formula,
+    .warning {
+      padding: 18px;
+    }
+
+    .photo {
+      overflow: hidden;
+    }
+
+    .photo img {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      background: #eef2f6;
+    }
+
+    .caption {
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .key-points {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      padding: 14px;
+      min-height: 126px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 700;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(116px, 1fr));
+      align-items: stretch;
+      gap: 18px;
+      margin-top: 14px;
+    }
+
+    .node {
+      position: relative;
+      padding: 14px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      min-height: 92px;
+    }
+
+    .node:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -18px;
+      top: 34px;
+      color: var(--muted);
+      font-weight: 700;
+      background: var(--paper);
+      width: 14px;
+      text-align: center;
+    }
+
+    .node b {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .node small {
+      color: var(--muted);
+    }
+
+    .loss {
+      color: var(--red);
+      font-weight: 800;
+    }
+
+    .ok {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      overflow-x: auto;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    table {
+      width: 100%;
+      max-width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef4f8;
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      color: #40505f;
+      letter-spacing: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+      margin: 0;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .transcript {
+      columns: 2;
+      column-gap: 32px;
+    }
+
+    .transcript li {
+      break-inside: avoid;
+      margin-bottom: 8px;
+    }
+
+    .warning {
+      background: var(--red-soft);
+      border-color: #ffd2cc;
+    }
+
+    .note {
+      background: var(--green-soft);
+      border-color: #c9ead7;
+    }
+
+    .example {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .step {
+      padding: 14px;
+    }
+
+    .step + .step {
+      margin-top: 10px;
+    }
+
+    .visual-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .visual-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .visual-title p {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .device-map {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .device {
+      position: relative;
+      min-height: 172px;
+      padding: 16px 14px;
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .device:not(:last-child)::after {
+      content: "fiber";
+      position: absolute;
+      right: -44px;
+      top: 47px;
+      width: 64px;
+      height: 24px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-align: center;
+      border-top: 3px solid #6aa4e8;
+      z-index: 2;
+    }
+
+    .device-symbol {
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      background: var(--blue-soft);
+      color: #134da1;
+      border: 1px solid #bdd5ff;
+      font-weight: 800;
+    }
+
+    .device:nth-child(2) .device-symbol {
+      background: var(--orange-soft);
+      color: var(--orange);
+      border-color: #f5d3a4;
+    }
+
+    .device:nth-child(3) .device-symbol {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: #bfe4cf;
+    }
+
+    .device:nth-child(4) .device-symbol {
+      background: var(--red-soft);
+      color: var(--red);
+      border-color: #ffc9c2;
+    }
+
+    .device b,
+    .mini-card b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .device p,
+    .mini-card p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .power-visuals {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .gauge-track {
+      position: relative;
+      height: 32px;
+      margin: 26px 10px 30px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #ffd9d5 0 29%, #d7f1de 29% 77%, #fff0c2 77% 100%);
+      border: 1px solid var(--line);
+    }
+
+    .gauge-band {
+      position: absolute;
+      top: -24px;
+      left: 29%;
+      right: 23%;
+      text-align: center;
+      color: var(--green);
+      font-weight: 800;
+      font-size: 0.86rem;
+    }
+
+    .gauge-marker {
+      position: absolute;
+      top: -9px;
+      width: 3px;
+      height: 50px;
+      background: var(--ink);
+      border-radius: 4px;
+    }
+
+    .gauge-marker::after {
+      content: attr(data-label);
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 78px;
+      text-align: center;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 0.82rem;
+    }
+
+    .marker-low {
+      left: 11%;
+      background: var(--red);
+    }
+
+    .marker-min {
+      left: 29%;
+      background: var(--green);
+    }
+
+    .marker-max {
+      left: 77%;
+      background: var(--green);
+    }
+
+    .gauge-scale {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin: 0 10px;
+    }
+
+    .waterfall {
+      display: grid;
+      gap: 9px;
+    }
+
+    .water-row {
+      display: grid;
+      grid-template-columns: 104px minmax(0, 1fr) 72px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .water-bar {
+      height: 18px;
+      border-radius: 999px;
+      background: #dde9f6;
+      overflow: hidden;
+      border: 1px solid #ccdae8;
+    }
+
+    .water-fill {
+      display: block;
+      height: 100%;
+      background: #2f80ed;
+    }
+
+    .water-row.loss-row .water-fill {
+      background: #d86c5b;
+    }
+
+    .water-row.final-row .water-fill {
+      background: var(--red);
+    }
+
+    .splitter-demo {
+      display: grid;
+      grid-template-columns: minmax(190px, 0.8fr) minmax(0, 1.2fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .split-box {
+      position: relative;
+      min-height: 218px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 18px;
+    }
+
+    .split-box::after {
+      content: "8 customer branches";
+      position: absolute;
+      right: 18px;
+      bottom: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .split-center {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 74px;
+      height: 74px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--orange-soft);
+      color: var(--orange);
+      border: 1px solid #f5d3a4;
+      font-weight: 800;
+    }
+
+    .branches {
+      margin-left: 105px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(36px, 1fr));
+      gap: 14px;
+      height: 162px;
+      align-content: center;
+    }
+
+    .branch {
+      position: relative;
+      min-height: 44px;
+      border-left: 2px solid #6aa4e8;
+      border-bottom: 2px solid #6aa4e8;
+    }
+
+    .branch::after {
+      content: "";
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #ffffff;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .mini-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    .story-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(340px, 1.05fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .story-copy {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+
+    .story-copy h2 {
+      font-size: 1.75rem;
+    }
+
+    .story-copy p + p {
+      margin-top: 12px;
+    }
+
+    .story-strip {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .story-chip {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdff;
+      min-height: 92px;
+    }
+
+    .story-chip b {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .story-chip span {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .home-visual {
+      min-height: 360px;
+      background: linear-gradient(180deg, #eef7ff 0%, #ffffff 52%, #edf7ef 52%, #edf7ef 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sky-label,
+    .ground-label {
+      position: absolute;
+      left: 20px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .sky-label {
+      top: 16px;
+    }
+
+    .ground-label {
+      bottom: 16px;
+    }
+
+    .office-tower,
+    .home-box,
+    .street-cabinet {
+      position: absolute;
+      bottom: 54px;
+      border: 2px solid #40505f;
+      background: #ffffff;
+      border-radius: 6px;
+      z-index: 2;
+    }
+
+    .office-tower {
+      left: 42px;
+      width: 86px;
+      height: 170px;
+      display: grid;
+      grid-template-rows: 42px 1fr;
+      overflow: hidden;
+    }
+
+    .office-tower::before {
+      content: "ISP";
+      display: grid;
+      place-items: center;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      border-bottom: 2px solid #40505f;
+    }
+
+    .street-cabinet {
+      left: 48%;
+      width: 74px;
+      height: 96px;
+      transform: translateX(-50%);
+      background: var(--orange-soft);
+    }
+
+    .street-cabinet::before {
+      content: "SPLIT";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--orange);
+      font-weight: 800;
+      font-size: 0.78rem;
+    }
+
+    .home-box {
+      right: 42px;
+      width: 128px;
+      height: 112px;
+      border-radius: 6px 6px 4px 4px;
+    }
+
+    .home-box::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      right: -10px;
+      top: -42px;
+      height: 48px;
+      background: var(--green-soft);
+      border: 2px solid #40505f;
+      transform: skewX(-18deg);
+      border-radius: 6px 6px 0 0;
+    }
+
+    .home-box::after {
+      content: "ONT";
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfdff;
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .fiber-line {
+      position: absolute;
+      left: 124px;
+      right: 146px;
+      bottom: 124px;
+      height: 5px;
+      background: linear-gradient(90deg, #2f80ed, #66b37a, #d86c5b);
+      border-radius: 999px;
+      z-index: 1;
+    }
+
+    .fiber-loss {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 32px;
+      border-radius: 999px;
+      border: 1px solid #ffc9c2;
+      background: var(--red-soft);
+      color: var(--red);
+      font-weight: 800;
+      font-size: 0.78rem;
+      z-index: 4;
+    }
+
+    .fiber-loss.one {
+      left: 29%;
+      bottom: 145px;
+    }
+
+    .fiber-loss.two {
+      left: 52%;
+      bottom: 145px;
+    }
+
+    .fiber-loss.three {
+      right: 18%;
+      bottom: 164px;
+    }
+
+    .story-track {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .story-scene {
+      position: relative;
+      min-height: 238px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .story-scene::before {
+      content: attr(data-step);
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .scene-art {
+      height: 76px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      background: #f0f5fa;
+      border: 1px solid var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scene-art .beam {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      top: 36px;
+      height: 5px;
+      border-radius: 999px;
+      background: #2f80ed;
+    }
+
+    .scene-art.loss-art .beam {
+      background: linear-gradient(90deg, #2f80ed 0 35%, #d86c5b 35% 100%);
+      width: 56%;
+      right: auto;
+    }
+
+    .scene-art.split-art .beam::after,
+    .scene-art.split-art .beam::before {
+      content: "";
+      position: absolute;
+      right: -6px;
+      width: 48px;
+      height: 4px;
+      border-radius: 999px;
+      background: #6aa4e8;
+    }
+
+    .scene-art.split-art .beam::before {
+      top: -16px;
+      transform: rotate(-24deg);
+    }
+
+    .scene-art.split-art .beam::after {
+      top: 16px;
+      transform: rotate(24deg);
+    }
+
+    .scene-art.bad-art {
+      background: var(--red-soft);
+      border-color: #ffc9c2;
+    }
+
+    .scene-art.bad-art .beam {
+      width: 22%;
+      right: auto;
+      background: var(--red);
+    }
+
+    .story-scene b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .story-scene p {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .route-compare {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .route-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 18px;
+    }
+
+    .route-card.good {
+      border-color: #bfe4cf;
+      background: #f7fcf9;
+    }
+
+    .route-card.bad {
+      border-color: #ffc9c2;
+      background: #fffafa;
+    }
+
+    .route-path {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(72px, 1fr));
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .route-hop {
+      min-height: 58px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      font-weight: 800;
+      font-size: 0.82rem;
+      overflow-wrap: anywhere;
+    }
+
+    .route-card.good .route-hop {
+      border-color: #bfe4cf;
+    }
+
+    .route-card.bad .route-hop {
+      border-color: #ffc9c2;
+    }
+
+    .receipt {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .receipt-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 78px;
+      gap: 10px;
+      align-items: center;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .receipt-row:last-child {
+      border-bottom: 0;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .decision-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .decision {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 14px;
+      min-height: 132px;
+    }
+
+    .decision span {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .decision b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .decision p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .budget-machine {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .budget-token {
+      position: relative;
+      min-height: 118px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 14px;
+    }
+
+    .budget-token:not(:last-child)::after {
+      content: "-";
+      position: absolute;
+      right: -12px;
+      top: 42px;
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font-weight: 800;
+      z-index: 2;
+    }
+
+    .budget-token.final:not(:last-child)::after {
+      content: "";
+    }
+
+    .budget-token b {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .budget-token strong {
+      display: block;
+      color: var(--blue);
+      font-size: 1.15rem;
+      margin-bottom: 6px;
+    }
+
+    .budget-token span {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .budget-token.final {
+      background: var(--green-soft);
+      border-color: #bfe4cf;
+    }
+
+    .loss-ladder {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 0 16px;
+    }
+
+    .loss-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 14px;
+      min-height: 146px;
+    }
+
+    .loss-card b {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .loss-card b span {
+      color: var(--red);
+      font-size: 1.1rem;
+    }
+
+    .loss-meter {
+      height: 78px;
+      display: grid;
+      align-items: end;
+      border-left: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding-left: 8px;
+    }
+
+    .loss-column {
+      display: block;
+      width: 44px;
+      border-radius: 7px 7px 0 0;
+      background: linear-gradient(180deg, #f08b7a, var(--red));
+    }
+
+    .loss-card p {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 10px;
+    }
+
+    .pon-visual {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .pon-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 18px;
+    }
+
+    .pon-tree {
+      min-height: 248px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 22px;
+      align-items: center;
+    }
+
+    .pon-root {
+      min-height: 92px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #bdd5ff;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+    }
+
+    .customer-dots {
+      display: grid;
+      grid-template-columns: repeat(16, minmax(8px, 1fr));
+      gap: 8px;
+      align-items: center;
+    }
+
+    .customer-dots span {
+      aspect-ratio: 1;
+      border-radius: 999px;
+      background: #b7d7ff;
+      border: 1px solid #8ebdf5;
+    }
+
+    .pon-callout {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .system-visual {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 132px minmax(0, 1fr);
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .system-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .system-pill {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px 14px;
+      min-height: 54px;
+    }
+
+    .system-pill b {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .system-pill span {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .engine-core {
+      min-height: 132px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #bdd5ff;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      padding: 14px;
+    }
+
+    .output-card {
+      border: 1px solid #bfe4cf;
+      border-radius: 8px;
+      background: var(--green-soft);
+      padding: 16px;
+    }
+
+    .output-card strong {
+      display: block;
+      color: var(--green);
+      font-size: 1.25rem;
+      margin: 8px 0;
+    }
+
+    .status-bars {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .status-bar {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .status-line {
+      height: 12px;
+      border-radius: 999px;
+      background: #d9e1e8;
+      overflow: hidden;
+    }
+
+    .status-line span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+    }
+
+    .status-line.pass span {
+      width: 78%;
+      background: var(--green);
+    }
+
+    .status-line.warn span {
+      width: 48%;
+      background: #d8952f;
+    }
+
+    .status-line.fail span {
+      width: 22%;
+      background: var(--red);
+    }
+
+    .takeaway-art {
+      height: 116px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fbfdff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .takeaway-art.split-budget::before,
+    .takeaway-art.measure-power::before,
+    .takeaway-art.loss-stack::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border-radius: 8px;
+    }
+
+    .takeaway-art.split-budget::before {
+      background:
+        linear-gradient(90deg, transparent 0 45%, #6aa4e8 45% 49%, transparent 49%),
+        linear-gradient(24deg, transparent 0 48%, #6aa4e8 48% 52%, transparent 52%),
+        linear-gradient(-24deg, transparent 0 48%, #6aa4e8 48% 52%, transparent 52%);
+    }
+
+    .takeaway-art.split-budget::after {
+      content: "split budget";
+      position: absolute;
+      left: 18px;
+      bottom: 14px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .takeaway-art.measure-power::before {
+      border: 12px solid #d7f1de;
+      border-top-color: #ffd9d5;
+      border-right-color: #fff0c2;
+      border-radius: 999px;
+    }
+
+    .takeaway-art.measure-power::after {
+      content: "-18 dBm";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .takeaway-art.loss-stack span {
+      position: absolute;
+      left: 26px;
+      right: 26px;
+      height: 16px;
+      border-radius: 999px;
+      background: #d86c5b;
+    }
+
+    .takeaway-art.loss-stack span:nth-child(1) {
+      top: 24px;
+      width: 72%;
+    }
+
+    .takeaway-art.loss-stack span:nth-child(2) {
+      top: 50px;
+      width: 58%;
+    }
+
+    .takeaway-art.loss-stack span:nth-child(3) {
+      top: 76px;
+      width: 38%;
+    }
+
+    .footer {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        width: 84vw;
+        max-width: 84vw;
+        padding: 16px 0 40px;
+      }
+
+      h1 {
+        font-size: 1.55rem;
+        max-width: 100%;
+        word-break: break-word;
+      }
+
+      h2 {
+        font-size: 1.1rem;
+      }
+
+      .subhead {
+        font-size: 0.88rem;
+      }
+
+      .grid.two,
+      .grid.three,
+      .key-points,
+      .example,
+      .device-map,
+      .power-visuals,
+      .splitter-demo,
+      .mini-grid,
+      .story-hero,
+      .story-strip,
+      .story-track,
+      .route-compare,
+      .decision-strip,
+      .budget-machine,
+      .loss-ladder,
+      .pon-visual,
+      .system-visual {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .panel,
+      .photo,
+      .note,
+      .formula,
+      .step,
+      .metric,
+      .warning,
+      .visual-card,
+      .route-card,
+      .story-copy,
+      .story-scene,
+      .decision,
+      .loss-card,
+      .pon-card,
+      .pon-tree {
+        min-width: 0;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: normal;
+      }
+
+      .node:not(:last-child)::after {
+        content: "v";
+        right: 50%;
+        top: auto;
+        bottom: -17px;
+        transform: translateX(50%);
+      }
+
+      .transcript {
+        columns: 1;
+      }
+
+      .device:not(:last-child)::after {
+        content: "";
+        right: auto;
+        left: 28px;
+        top: auto;
+        bottom: -14px;
+        width: 3px;
+        height: 28px;
+        border-top: 0;
+        border-left: 3px solid #6aa4e8;
+        background: transparent;
+      }
+
+      .water-row {
+        grid-template-columns: 70px minmax(0, 1fr);
+        gap: 6px;
+        font-size: 0.78rem;
+      }
+
+      .water-row b {
+        grid-column: 1 / -1;
+        justify-self: start;
+      }
+
+      .receipt-row {
+        grid-template-columns: 1fr;
+        gap: 2px;
+      }
+
+      .route-path {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .gauge-track {
+        margin: 28px 14px 34px;
+      }
+
+      .gauge-marker::after {
+        min-width: 52px;
+        font-size: 0.7rem;
+      }
+
+      .gauge-band,
+      .gauge-scale {
+        font-size: 0.7rem;
+      }
+
+      .loss-card b {
+        display: block;
+      }
+
+      .loss-card b span {
+        display: block;
+        margin-top: 4px;
+      }
+
+      .split-box::after {
+        left: 18px;
+        right: auto;
+      }
+
+      .budget-token:not(:last-child)::after {
+        content: "v";
+        right: auto;
+        left: 18px;
+        top: auto;
+        bottom: -16px;
+      }
+
+      .pon-tree {
+        grid-template-columns: 1fr;
+      }
+
+      .customer-dots {
+        grid-template-columns: repeat(8, minmax(8px, 1fr));
+      }
+
+      .home-visual {
+        min-height: 440px;
+      }
+
+      .office-tower {
+        left: 22px;
+      }
+
+      .home-box {
+        right: 22px;
+      }
+
+      .street-cabinet {
+        left: 50%;
+      }
+
+      .fiber-line {
+        left: 96px;
+        right: 112px;
+      }
+
+      .fiber-loss.one {
+        left: 20%;
+      }
+
+      .fiber-loss.two {
+        left: 45%;
+      }
+
+      .fiber-loss.three {
+        right: 17%;
+      }
+    }
+  </style>
+
+  <style>
+    .snowflake-tables-section,
+    .final-inference-section,
+    .live-data-section { margin-top: 42px; }
+    .live-data-copy,
+    .live-data-foot,
+    .muted-copy { color: var(--muted); }
+    .live-data-copy { max-width: 980px; margin-bottom: 16px; }
+    .live-metrics { margin-top: 16px; }
+    .live-grid { margin-top: 16px; }
+    .data-table { overflow-x: auto; }
+    .data-table table { min-width: 760px; }
+    .data-table th,
+    .data-table td { white-space: nowrap; }
+    .live-map { margin-top: 18px; }
+    .live-data-foot { margin-top: 16px; font-size: 0.92rem; }
+    .inference-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+    .inference-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    .inference-card.primary { border-color: #9cc3ff; background: #f4f8ff; }
+    .inference-card.danger { border-color: #ffb2aa; background: #fff7f6; }
+    .inference-card strong { display: block; margin: 8px 0; font-size: 1.8rem; color: #1155b0; }
+    .inference-card.danger strong { color: #b42318; }
+    .inference-card p { color: var(--muted); }
+    .final-callout { margin-top: 14px; border: 1px solid #bfe4cf; background: #edf9f2; border-radius: 8px; padding: 16px; }
+    @media (max-width: 900px) {
+      .data-table table { min-width: 640px; }
+      .data-table th,
+      .data-table td { white-space: normal; }
+      .inference-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>GPON / FTTH Optical Link Budget Notes</h1>
+      <p class="subhead">
+        Cleaned OCR and interpretation from the two whiteboard photos. The board is about how an ISP fiber path is planned from OLT to splitters to ONT/CPE, and how every fiber segment, splice, connector, bend, patch cord, and splitter reduces received optical power.
+      </p>
+      <div class="key-points" aria-label="Main ideas">
+        <div class="metric">
+          <span class="pill">Unit rule</span>
+          <strong>dBm is power. dB is loss.</strong>
+          <span>Losses are subtracted from launch power to estimate customer receive power.</span>
+        </div>
+        <div class="metric">
+          <span class="pill">Board range</span>
+          <strong>ONT Rx target: about -8 to -25 dBm</strong>
+          <span>The board marks values below this, such as -31 dBm, as out of range.</span>
+        </div>
+        <div class="metric">
+          <span class="pill">Splitter rule</span>
+          <strong>1:2 = 3 dB, 1:4 = 6 dB, 1:8 = 9 dB, 1:16 = 12 dB</strong>
+          <span>These are simplified planning values from the board.</span>
+        </div>
+        <div class="metric">
+          <span class="pill">Planning data</span>
+          <strong>Location + splitter config + JC box</strong>
+          <span>The system should compute expected Rx power at each customer location.</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="final-inference-section">
+      <h2>Final Inference: What dBm Customers Are Getting</h2>
+      <div class="inference-grid">
+        <div class="inference-card primary">
+          <span class="pill">Customer-side Rx</span>
+          <strong>-19.93 dBm</strong>
+          <p>Average latest optical receive power across 83,654 NAS/device rows on 2026-06-27 from <code>PROD_DB.DBT.FCT_OPTICAL_SIGNAL</code>.</p>
+        </div>
+        <div class="inference-card">
+          <span class="pill">Healthy bucket</span>
+          <strong>-18.27 dBm</strong>
+          <p>67,722 rows marked Good. This is inside the whiteboard target window of about -8 to -25 dBm.</p>
+        </div>
+        <div class="inference-card danger">
+          <span class="pill">Poor bucket</span>
+          <strong>-27 dBm</strong>
+          <p>15,932 rows marked Poor. These customers are weaker than the board's -25 dBm floor.</p>
+        </div>
+        <div class="inference-card">
+          <span class="pill">Router Rx median</span>
+          <strong>-22.1 dBm</strong>
+          <p>Median valid current router receive power from <code>PROD_DB.PUBLIC.ROUTER_DETAILS</code>; 2,681 valid Rx rows are outside the board range.</p>
+        </div>
+      </div>
+      <div class="final-callout">
+        <b>Answer:</b> customers are generally getting around <strong>-19.93 dBm</strong> at the customer-side optical receiver. Healthy customers are around <strong>-18.27 dBm</strong>. Poor/out-of-range customers are around <strong>-27 dBm</strong>, which is the group to investigate for weak fiber signal, bad split path, connector/patch loss, or field issues.
+      </div>
+      <p class="live-data-foot">
+        For one exact customer, use <code>NAS_ID</code>, <code>device_id</code>, or <code>customer_id</code> against <code>FCT_OPTICAL_SIGNAL</code> / <code>ROUTER_DETAILS</code>. The current report answers the fleet-level customer dBm.
+      </p>
+    </section>
+    
+
+    <section class="snowflake-tables-section">
+      <h2>Actual Snowflake Tables Queried</h2>
+      <p class="live-data-copy">
+        These are the exact Snowflake tables behind the DBM/ONT/dBm report. Fully qualified names are shown so the table choice can be judged before trusting the visuals.
+      </p>
+      <div class="panel">
+        <div class="data-table"><table><thead><tr><th>Snowflake Table</th><th>Role In Dbm Report</th><th>Columns Used Or Checked</th><th>Row Count</th><th>Last Altered</th><th>Output Files</th></tr></thead><tbody><tr><td>PROD_DB.DBT.HOURLY_DEVICE_PING_INFLUX</td><td>Largest optical telemetry table. Used for daily optical min/avg/max and ping health.</td><td>PARTNER_ID, DEVICE_ID, NAS_ID, DATE_IST, HOUR_START_IST, OPTICAL_MIN, OPTICAL_AVG, OPTICAL_MAX, TOTAL_PINGS_RECEIVED, TOTAL_PINGS_MISSED</td><td>165,526,317</td><td>2026-06-27 13:41:45.556000+05:30</td><td>dbm_hourly_device_ping_optical_daily.csv</td></tr><tr><td>PROD_DB.PUBLIC.ROUTER_DETAILS_AUDIT</td><td>Historical router power/change table. Included so audit depth is visible.</td><td>device_id, nas_id, customer_id, partner_id, tx_power, rx_power, is_customer_active, is_plan_active, change_time</td><td>35,854,602</td><td>2026-06-27 10:01:12.530000+05:30</td><td>dbm_relevant_network_table_counts.csv, dbm_signal_table_inventory.csv</td></tr><tr><td>PROD_DB.DBT.TASKVANILLA_AUDIT</td><td>Installation/task event stream with captured optical power source and value.</td><td>EVENT_NAME, ADDED_TIME, DEVICE_ID, DEVICEID, CONNECTIONTYPE, OPTICALPOWER, OPTICAL_POWER_SOURCE, ROUTER_MAC</td><td>21,235,871</td><td>2026-06-27 12:51:15.855000+05:30</td><td>dbm_taskvanilla_opticalpower_events.csv</td></tr><tr><td>PROD_DB.DBT.FCT_OPTICAL_SIGNAL</td><td>Main daily NAS optical dBm fact used for Good/Poor health and board-range OOR counts.</td><td>NAS_ID, DATE_IST, AVG_OPTICAL_DBM, OPTICAL_READINGS, OPTICAL_HEALTH</td><td>9,039,555</td><td>2026-06-27 12:54:48.281000+05:30</td><td>dbm_optical_signal_latest_health.csv, dbm_optical_signal_daily_trend.csv, dbm_optical_device_worst_sample.csv</td></tr><tr><td>PROD_DB.DBT.AVG_OPTICAL_SIGNAL</td><td>Older/alternate daily optical dBm aggregate discovered in column scan.</td><td>NAS_ID, DATE_IST, AVG_OPTICAL_DBM, OPTICAL_READINGS, OPTICAL_HEALTH</td><td>7,887,023</td><td>2026-06-11 12:07:47.130000+05:30</td><td>dbm_signal_table_inventory.csv, dbm_sample_dbt_avg_optical_signal.csv</td></tr><tr><td>PROD_DB.DYNAMODB.BOOKING</td><td>Booking source with ONT field distribution.</td><td>ONT, DEVICE_ID</td><td>5,422,813</td><td>2026-06-27 13:40:04.742000+05:30</td><td>dbm_booking_ont_distribution.csv</td></tr><tr><td>PROD_DB.PUBLIC.ROUTER_DETAILS</td><td>Current router table with direct Rx/Tx power readings.</td><td>device_id, nas_id, customer_id, partner_id, location, ping_in_24hrs, tx_power, rx_power, is_customer_active, is_plan_active, deleted, added_time, modified_time</td><td>323,951</td><td>2026-06-27 10:12:09.903000+05:30</td><td>dbm_router_details_power_profile.csv, dbm_router_details_power_sample.csv</td></tr><tr><td>PROD_DB.DYNAMODB.IN_P_INCENTIVE_PROCESSING_SCHEDULE</td><td>Install/incentive table with optical power measurement profile.</td><td>DEVICE_ID, OPTICAL_POWER</td><td>175,281</td><td>2026-01-18 13:22:29.905000+05:30</td><td>dbm_incentive_optical_power_profile.csv</td></tr><tr><td>PROD_DB.DBT.PARTNER_JANAM_KUNDLI</td><td>Partner-level ONT/router rollup.</td><td>ACTIVE_CUSTOMER_WITH_OPTICAL_POWER, TOTAL_DEVICES, TOTAL_ONTS, ACTIVE_ONTS, CHURNED_ONTS, PARTNER_OFFICE_ONTS, REPAIR_ONTS, TOTAL_ROUTERS, ACTIVE_ROUTERS</td><td>1,763</td><td>2026-06-27 13:05:00.077000+05:30</td><td>dbm_partner_ont_rollup.csv, dbm_partner_ont_top.csv</td></tr><tr><td>PROD_DB.DBT.FCT_OPTICAL_OOR_PCT</td><td>Daily out-of-range percent fact.</td><td>DATE_IST, OOR_DEVICE_COUNT, TOTAL_DEVICES, OOR_PCT</td><td>89</td><td>2026-06-27 13:04:30.036000+05:30</td><td>dbm_optical_oor_pct_trend.csv</td></tr><tr><td>PROD_DB.PUBLIC.GX_ROUTER_HOURLY_DATA</td><td>Small router hourly Rx-power source discovered during scan.</td><td>_TIME, DEVICE_ID, NAS_ID, PARTNER_ID, RX_POWER_AVG, RX_POWER_MAX, RX_POWER_MIN</td><td>8</td><td>2026-02-26 17:06:25.228000+05:30</td><td>dbm_gx_router_rx_power_daily.csv</td></tr></tbody></table></div>
+      </div>
+      <div class="panel live-grid">
+        <h3>Discovery Queries</h3>
+        <div class="data-table"><table><thead><tr><th>Discovery Query</th><th>What It Did</th><th>Output File</th><th>Rows Returned</th></tr></thead><tbody><tr><td>PROD_DB.INFORMATION_SCHEMA.COLUMNS</td><td>Searched PUBLIC, DBT, DYNAMODB, DS_TABLES for DBM, ONT, OLT, PON, OPTICAL, SIGNAL, RX/TX, POWER, ROUTER, NETBOX, MAC, DEVICE, SPLITTER fields.</td><td>dbm_signal_column_inventory.csv</td><td>1,592</td></tr><tr><td>PROD_DB.INFORMATION_SCHEMA.TABLES</td><td>Pulled row counts and last-altered timestamps for the relevant network tables.</td><td>dbm_relevant_network_table_counts.csv</td><td>11</td></tr><tr><td>OLT-specific INFORMATION_SCHEMA.COLUMNS scan</td><td>Regex searched for OLT table or column names. It returned zero rows in the queried schemas.</td><td>dbm_olt_column_inventory.csv</td><td>0</td></tr></tbody></table></div>
+      </div>
+      <p class="live-data-foot">
+        The dedicated CSV is <code>dbm_journey/data/dbm_snowflake_tables_used.csv</code>.
+      </p>
+    </section>
+    
+
+    <section>
+      <div class="story-hero">
+        <div class="story-copy">
+          <span class="pill">Story version</span>
+          <h2>Imagine one customer just asked for fiber internet.</h2>
+          <p>
+            The ISP already has internet at its office equipment. The question is whether enough optical power can travel from that office, through splitters and fiber joints, and still reach the customer modem.
+          </p>
+          <p>
+            Think of the whiteboard as the engineer checking that journey before connecting the customer. If the final number is inside the ONT range, the connection is healthy. If it falls too low, the route needs fewer splits, cleaner joints, or a different design.
+          </p>
+          <div class="story-strip">
+            <div class="story-chip">
+              <b>Start</b>
+              <span>OLT sends light into the fiber network.</span>
+            </div>
+            <div class="story-chip">
+              <b>Middle</b>
+              <span>Splitters and joints take small or large cuts from that light.</span>
+            </div>
+            <div class="story-chip">
+              <b>Finish</b>
+              <span>ONT checks whether the remaining light is usable.</span>
+            </div>
+          </div>
+        </div>
+        <div class="home-visual" aria-label="Fiber journey from ISP office to customer home">
+          <span class="sky-label">fiber light travels across the route</span>
+          <span class="ground-label">ISP side to customer premises</span>
+          <div class="office-tower"></div>
+          <div class="fiber-line"></div>
+          <div class="fiber-loss one">splice</div>
+          <div class="fiber-loss two">1x8</div>
+          <div class="fiber-loss three">patch</div>
+          <div class="street-cabinet"></div>
+          <div class="home-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>The Journey Of One Light Signal</h2>
+      <div class="story-track" aria-label="Six scene fiber journey">
+        <div class="story-scene" data-step="1">
+          <div class="scene-art"><span class="beam"></span></div>
+          <b>The OLT starts strong</b>
+          <p>The board uses roughly +5 to +7 dBm as the starting transmit power.</p>
+        </div>
+        <div class="story-scene" data-step="2">
+          <div class="scene-art loss-art"><span class="beam"></span></div>
+          <b>Fiber distance takes a little</b>
+          <p>Longer fiber adds attenuation. The board notes 800 m as about 1 to 2 dB.</p>
+        </div>
+        <div class="story-scene" data-step="3">
+          <div class="scene-art split-art"><span class="beam"></span></div>
+          <b>Splitters take a lot</b>
+          <p>A 1x8 splitter is easy to deploy, but it costs about 9 dB each time.</p>
+        </div>
+        <div class="story-scene" data-step="4">
+          <div class="scene-art loss-art"><span class="beam"></span></div>
+          <b>Joints add field loss</b>
+          <p>Splices, JC boxes, bends, patch cords, and dirty connectors all reduce power.</p>
+        </div>
+        <div class="story-scene" data-step="5">
+          <div class="scene-art"><span class="beam"></span></div>
+          <b>The ONT receives what remains</b>
+          <p>The customer modem does not care where the loss happened, only the final dBm.</p>
+        </div>
+        <div class="story-scene" data-step="6">
+          <div class="scene-art bad-art"><span class="beam"></span></div>
+          <b>Too weak becomes OOR</b>
+          <p>The board marks -31 dBm as out of range because it is weaker than about -25 dBm.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Good Route vs Failing Route</h2>
+      <div class="route-compare">
+        <div class="route-card good">
+          <span class="pill">Healthy design</span>
+          <h3>Enough light reaches the customer</h3>
+          <div class="route-path" aria-label="Healthy route">
+            <div class="route-hop">OLT<br>+5</div>
+            <div class="route-hop">1x8<br>-9</div>
+            <div class="route-hop">fiber<br>-2</div>
+            <div class="route-hop">field<br>-4</div>
+            <div class="route-hop">ONT<br>-10</div>
+          </div>
+          <p>
+            This simplified route keeps the ONT inside the usable window. The exact value is less important than the habit: add every loss and compare the final power.
+          </p>
+          <div class="receipt">
+            <div class="receipt-row"><span>OLT starts</span><b>+5 dBm</b></div>
+            <div class="receipt-row"><span>Total planned loss</span><b>-15 dB</b></div>
+            <div class="receipt-row"><span>Expected ONT receive</span><b class="ok">-10 dBm</b></div>
+          </div>
+        </div>
+        <div class="route-card bad">
+          <span class="pill">Failing design</span>
+          <h3>Too many splits make the light too weak</h3>
+          <div class="route-path" aria-label="Failing route">
+            <div class="route-hop">OLT<br>+5</div>
+            <div class="route-hop">1x8<br>-9</div>
+            <div class="route-hop">1x8<br>-9</div>
+            <div class="route-hop">1x4<br>-6</div>
+            <div class="route-hop">ONT<br>-31</div>
+          </div>
+          <p>
+            This is the whiteboard story. Multiple splitters plus patch and field loss push the customer side below the ONT receive range.
+          </p>
+          <div class="receipt">
+            <div class="receipt-row"><span>OLT starts</span><b>+5 dBm</b></div>
+            <div class="receipt-row"><span>Splitter chain and field loss</span><b>-36 dB</b></div>
+            <div class="receipt-row"><span>Expected ONT receive</span><b class="loss">-31 dBm</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How To Read Any Future Whiteboard Like This</h2>
+      <div class="decision-strip">
+        <div class="decision">
+          <span>1</span>
+          <b>Find the start power</b>
+          <p>Look for OLT Tx power, usually written in dBm.</p>
+        </div>
+        <div class="decision">
+          <span>2</span>
+          <b>List every loss</b>
+          <p>Fiber, splitters, splices, JC boxes, patch cords, and bends are all in dB.</p>
+        </div>
+        <div class="decision">
+          <span>3</span>
+          <b>Subtract losses</b>
+          <p>Start dBm minus total dB loss gives expected customer Rx power.</p>
+        </div>
+        <div class="decision">
+          <span>4</span>
+          <b>Compare with ONT range</b>
+          <p>If it is below the lower limit, redesign the route or fix field loss.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Imported Whiteboard Photos</h2>
+      <div class="grid two">
+        <figure class="photo">
+          <img src="whiteboard_1.jpg" alt="Whiteboard photo 1 showing GPON loss notes, splitters, PON ports, and ONT receive power range">
+          <figcaption class="caption">Source image: whiteboard_1.jpg</figcaption>
+        </figure>
+        <figure class="photo">
+          <img src="whiteboard_2.jpg" alt="Whiteboard photo 2 showing an OLT to splitter to ONT chain and expected customer receive power notes">
+          <figcaption class="caption">Source image: whiteboard_2.jpg</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>Start Here: What The Boxes Mean</h2>
+      <div class="visual-card">
+        <div class="visual-title">
+          <h3>Internet over fiber, in plain terms</h3>
+          <p>The signal is light. The job is to keep enough light reaching the customer modem.</p>
+        </div>
+        <div class="device-map" aria-label="Beginner GPON visual map">
+          <div class="device">
+            <div class="device-symbol">OLT</div>
+            <b>Operator equipment</b>
+            <p>This is the starting point at the ISP side. It sends the optical signal into the fiber network.</p>
+          </div>
+          <div class="device">
+            <div class="device-symbol">1x8</div>
+            <b>Splitter</b>
+            <p>This divides one fiber signal into many customer paths. More splits mean more loss.</p>
+          </div>
+          <div class="device">
+            <div class="device-symbol">JC</div>
+            <b>Junction / patch point</b>
+            <p>Fiber joins, patch cords, bends, and connectors sit here. Each can add small loss.</p>
+          </div>
+          <div class="device">
+            <div class="device-symbol">ONT</div>
+            <b>Customer modem</b>
+            <p>This receives the light and turns it into home internet. It needs power in the safe range.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>The Core Idea Visually</h2>
+      <div class="power-visuals">
+        <div class="visual-card">
+          <div class="visual-title">
+            <h3>Receive power gauge</h3>
+            <p>For this board, green is roughly -25 to -8 dBm.</p>
+          </div>
+          <div class="gauge-track" aria-label="ONT receive power gauge from weak to strong">
+            <div class="gauge-band">usable ONT range</div>
+            <div class="gauge-marker marker-low" data-label="-31 OOR"></div>
+            <div class="gauge-marker marker-min" data-label="-25 min"></div>
+            <div class="gauge-marker marker-max" data-label="-8 max"></div>
+          </div>
+          <div class="gauge-scale">
+            <span>too weak</span>
+            <span>good range</span>
+            <span>too strong</span>
+          </div>
+        </div>
+
+        <div class="visual-card">
+          <div class="visual-title">
+            <h3>How the signal gets weaker</h3>
+            <p>Each row subtracts from the starting light level.</p>
+          </div>
+          <div class="waterfall" aria-label="Power loss waterfall example">
+            <div class="water-row">
+              <span>Start OLT</span>
+              <span class="water-bar"><span class="water-fill" style="width: 96%;"></span></span>
+              <b>+5 dBm</b>
+            </div>
+            <div class="water-row loss-row">
+              <span>1x8 split</span>
+              <span class="water-bar"><span class="water-fill" style="width: 72%;"></span></span>
+              <b>-4 dBm</b>
+            </div>
+            <div class="water-row loss-row">
+              <span>1x8 split</span>
+              <span class="water-bar"><span class="water-fill" style="width: 48%;"></span></span>
+              <b>-13 dBm</b>
+            </div>
+            <div class="water-row loss-row">
+              <span>1x4 split</span>
+              <span class="water-bar"><span class="water-fill" style="width: 32%;"></span></span>
+              <b>-19 dBm</b>
+            </div>
+            <div class="water-row final-row">
+              <span>1x8 + patch</span>
+              <span class="water-bar"><span class="water-fill" style="width: 12%;"></span></span>
+              <b>-31 dBm</b>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>What A Splitter Does</h2>
+      <div class="splitter-demo">
+        <div class="split-box" aria-label="1x8 splitter fan out">
+          <div class="split-center">1x8</div>
+          <div class="branches">
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+          </div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-card">
+            <b>Why 1x8 costs about 9 dB</b>
+            <p>The light is divided across 8 outputs. Each customer gets only a fraction of the original optical power.</p>
+          </div>
+          <div class="mini-card">
+            <b>Why too many splitters fail</b>
+            <p>If you split again and again, the customer-side light becomes too weak for the ONT to read reliably.</p>
+          </div>
+          <div class="mini-card">
+            <b>What dB means here</b>
+            <p>dB is the amount subtracted by a component, like a splitter, splice, connector, or fiber bend.</p>
+          </div>
+          <div class="mini-card">
+            <b>What dBm means here</b>
+            <p>dBm is the actual optical power level measured at a point, such as the ONT receive port.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Raw OCR Transcript</h2>
+      <div class="panel">
+        <ul class="transcript">
+          <li>Tx power: approximately +5 to +7 dBm.</li>
+          <li>800 m fiber run: noted as about 1 to 2 dB of path loss.</li>
+          <li>Wire break / fusion splice: about 0.1 to 0.3 dB loss.</li>
+          <li>Wire bend / JC box: extra loss; one note marks about 1 dB loss.</li>
+          <li>Patch cord: example shows -16 dBm becoming -19 dBm after about 3 dB loss.</li>
+          <li>Splitter losses: 1x2 = 3 dB, 1x4 = 6 dB, 1x8 = 9 dB, 1x16 = 12 dB.</li>
+          <li>PON ports: 1 PON can be planned up to 128 ONTs/customers; notes also list 2, 4, and 8 PON ports.</li>
+          <li>Customer side: CPE / ONT / NetBox; Rx power is measured in dBm.</li>
+          <li>Acceptable receive-power window on board: about -8 to -25 dBm.</li>
+          <li>Example chain: OLT -> 1x8 -> 1x8 -> 1x4 -> 1x8 -> ONT.</li>
+          <li>Example chain losses: -9, -9, -6, -9 dB, plus extra JC/patch/fiber loss.</li>
+          <li>Example output: about -31 dBm, marked OOR, meaning out of range.</li>
+          <li>System fields: lat/long, splitter config, JC box, CSP office, customer premises.</li>
+          <li>System output: expected Rx power at customer location.</li>
+          <li>Loss inputs: optical fiber attenuation, splitter loss, JC loss.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Network Model From The Board</h2>
+      <div class="panel">
+        <p>
+          A GPON/FTTH path starts at the OLT in the operator network, passes through feeder fiber, junction/JC boxes, splitters, distribution fiber, patch cords, and finally reaches the ONT at the customer premises. Every passive element adds loss. The ONT only works reliably if the final received optical power stays inside its supported range.
+        </p>
+        <div class="flow" aria-label="GPON path">
+          <div class="node">
+            <b>OLT</b>
+            <small>Launches optical signal, example Tx about +5 to +7 dBm.</small>
+          </div>
+          <div class="node">
+            <b>Feeder fiber</b>
+            <small>Fiber attenuation plus splices and bends.</small>
+          </div>
+          <div class="node">
+            <b>Splitter chain</b>
+            <small>1:2, 1:4, 1:8, 1:16 split ratios add large loss.</small>
+          </div>
+          <div class="node">
+            <b>JC / patch</b>
+            <small>Connectors, patch cords, junction boxes, and bad bends add margin loss.</small>
+          </div>
+          <div class="node">
+            <b>ONT / CPE</b>
+            <small>Expected Rx should land around -8 to -25 dBm in the board notes.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Correct Link-Budget Math</h2>
+      <div class="formula">
+        ONT Rx power (dBm) = OLT Tx power (dBm) - fiber loss (dB) - splice loss (dB) - splitter loss (dB) - connector / patch / bend loss (dB)
+      </div>
+      <div class="budget-machine" aria-label="Visual link budget calculator">
+        <div class="budget-token">
+          <b>Start</b>
+          <strong>+5 dBm</strong>
+          <span>OLT transmit power</span>
+        </div>
+        <div class="budget-token">
+          <b>Fiber</b>
+          <strong>1-2 dB</strong>
+          <span>Distance attenuation</span>
+        </div>
+        <div class="budget-token">
+          <b>Splitter</b>
+          <strong>9 dB</strong>
+          <span>Example 1x8 split</span>
+        </div>
+        <div class="budget-token">
+          <b>Joints</b>
+          <strong>0.1-1 dB</strong>
+          <span>Splice, JC, bend</span>
+        </div>
+        <div class="budget-token">
+          <b>Patch</b>
+          <strong>1-3 dB</strong>
+          <span>Connector or patch cord</span>
+        </div>
+        <div class="budget-token final">
+          <b>Finish</b>
+          <strong>Rx dBm</strong>
+          <span>Compare with ONT range</span>
+        </div>
+      </div>
+      <div class="grid two" style="margin-top: 16px;">
+        <div class="note">
+          <h3>Important correction</h3>
+          <p>
+            The board sometimes writes losses as dBm. Strictly, loss is measured in dB, while the measured optical signal level is dBm. Example: a 1x8 splitter has about 9 dB loss; after that loss, the signal might measure -16 dBm or -19 dBm.
+          </p>
+        </div>
+        <div class="warning">
+          <h3>What out of range means</h3>
+          <p>
+            If the expected customer Rx power is weaker than the ONT sensitivity limit, the ONT may fail registration, flap, or work unreliably. The board marks about -31 dBm as OOR because it is below the noted -25 dBm lower limit.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Loss Reference Table</h2>
+      <div class="loss-ladder" aria-label="Splitter loss ladder visual">
+        <div class="loss-card">
+          <b>1x2 <span>3 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 25%;"></span></div>
+          <p>Smallest split shown on the board.</p>
+        </div>
+        <div class="loss-card">
+          <b>1x4 <span>6 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 50%;"></span></div>
+          <p>Twice the number of customer branches.</p>
+        </div>
+        <div class="loss-card">
+          <b>1x8 <span>9 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 75%;"></span></div>
+          <p>Common in the board examples.</p>
+        </div>
+        <div class="loss-card">
+          <b>1x16 <span>12 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 100%;"></span></div>
+          <p>Largest simple splitter value listed.</p>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Whiteboard value</th>
+            <th>Meaning in planning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OLT Tx power</td>
+            <td>+5 to +7 dBm</td>
+            <td>Starting optical power before outside-plant losses.</td>
+          </tr>
+          <tr>
+            <td>800 m fiber run</td>
+            <td>1 to 2 dB noted</td>
+            <td>Fiber attenuation plus practical connector/splice margin. Pure fiber loss is usually lower, but field planning often carries margin.</td>
+          </tr>
+          <tr>
+            <td>Fusion splice / wire break repair</td>
+            <td>0.1 to 0.3 dB</td>
+            <td>Small loss for a good splice; bad splice or dirty connector can be worse.</td>
+          </tr>
+          <tr>
+            <td>Wire bend / JC box</td>
+            <td>About 1 dB noted</td>
+            <td>Extra loss caused by tight bends, joints, and connector handling.</td>
+          </tr>
+          <tr>
+            <td>Patch cord</td>
+            <td>Example 3 dB drop</td>
+            <td>A patch cord or connector problem can noticeably reduce Rx power.</td>
+          </tr>
+          <tr>
+            <td>1x2 splitter</td>
+            <td>3 dB</td>
+            <td>Signal is split into 2 outputs.</td>
+          </tr>
+          <tr>
+            <td>1x4 splitter</td>
+            <td>6 dB</td>
+            <td>Signal is split into 4 outputs.</td>
+          </tr>
+          <tr>
+            <td>1x8 splitter</td>
+            <td>9 dB</td>
+            <td>Signal is split into 8 outputs.</td>
+          </tr>
+          <tr>
+            <td>1x16 splitter</td>
+            <td>12 dB</td>
+            <td>Signal is split into 16 outputs.</td>
+          </tr>
+          <tr>
+            <td>ONT / CPE Rx window</td>
+            <td>-8 to -25 dBm</td>
+            <td>Expected receive power should stay inside this operating window.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pon-visual">
+        <div class="pon-card">
+          <h3>PON capacity is not the same as power budget</h3>
+          <p>
+            The board notes that one PON can be planned for up to 128 ONTs/customers. That does not mean every splitter chain is automatically healthy. You still need enough received power at each ONT.
+          </p>
+          <p class="pon-callout">
+            Capacity asks: how many customers can be attached? Link budget asks: will each customer's light level still work?
+          </p>
+        </div>
+        <div class="pon-tree" aria-label="One PON fan-out capacity visual">
+          <div class="pon-root">1 PON<br>port</div>
+          <div class="customer-dots" aria-label="128 customer dots represented visually">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Worked Example From The Board</h2>
+      <div class="example">
+        <div class="panel">
+          <p>
+            The board draws a chain with multiple splitters in series:
+          </p>
+          <div class="flow example-flow">
+            <div class="node"><b>OLT</b><small>Tx starts here</small></div>
+            <div class="node"><b>1x8</b><small class="loss">-9 dB</small></div>
+            <div class="node"><b>1x8</b><small class="loss">-9 dB</small></div>
+            <div class="node"><b>1x4</b><small class="loss">-6 dB</small></div>
+            <div class="node"><b>1x8 + ONT</b><small class="loss">-9 dB</small></div>
+          </div>
+        </div>
+        <div>
+          <div class="step">
+            <h3>1. Add splitter loss</h3>
+            <p><span class="loss">9 + 9 + 6 + 9 = 33 dB</span> splitter loss before fiber, JC, patch, and connector margin.</p>
+          </div>
+          <div class="step">
+            <h3>2. Add field loss</h3>
+            <p>The board also notes JC/patch/fiber losses, including a sample extra <span class="loss">3 dB</span> drop.</p>
+          </div>
+          <div class="step">
+            <h3>3. Compare against ONT range</h3>
+            <p>With a +5 dBm launch, +5 - 33 - 3 = <span class="loss">-31 dBm</span>, which is weaker than -25 dBm and therefore <span class="loss">OOR</span>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>System Design Implied By The Board</h2>
+      <div class="system-visual" aria-label="System input to output visual">
+        <div class="system-stack">
+          <div class="system-pill">
+            <b>Location</b>
+            <span>Customer lat/long and CSP office</span>
+          </div>
+          <div class="system-pill">
+            <b>Route</b>
+            <span>Fiber length, JC box, patch points</span>
+          </div>
+          <div class="system-pill">
+            <b>Splitter config</b>
+            <span>1x2, 1x4, 1x8, 1x16 chain</span>
+          </div>
+        </div>
+        <div class="engine-core">
+          Link budget<br>calculator
+        </div>
+        <div class="output-card">
+          <span class="pill">Output</span>
+          <strong>Expected Rx power</strong>
+          <p>Customer ONT status: pass, warning, or out of range.</p>
+          <div class="status-bars">
+            <div class="status-bar"><span>pass</span><span class="status-line pass"><span></span></span></div>
+            <div class="status-bar"><span>warning</span><span class="status-line warn"><span></span></span></div>
+            <div class="status-bar"><span>OOR</span><span class="status-line fail"><span></span></span></div>
+          </div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Input / field</th>
+            <th>Why it matters</th>
+            <th>Output it supports</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Customer latitude and longitude</td>
+            <td>Calculates route distance from CSP office, splitter, and JC box.</td>
+            <td>Fiber length and expected attenuation.</td>
+          </tr>
+          <tr>
+            <td>Splitter configuration</td>
+            <td>Identifies all split ratios in the customer path.</td>
+            <td>Total splitter loss.</td>
+          </tr>
+          <tr>
+            <td>JC box / junction data</td>
+            <td>Captures splices, connector points, bends, and patching losses.</td>
+            <td>Practical field margin.</td>
+          </tr>
+          <tr>
+            <td>CSP office and customer premises</td>
+            <td>Defines the end-to-end optical route.</td>
+            <td>Expected Rx power at the customer ONT.</td>
+          </tr>
+          <tr>
+            <td>Measured ONT Rx power</td>
+            <td>Validates whether the predicted design matches field reality.</td>
+            <td>Pass, warning, or out-of-range status.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+
+    <section class="live-data-section">
+      <h2>Live Snowflake Data Behind The DBM / ONT Story</h2>
+      <p class="live-data-copy">
+        Queried from Snowflake through the <code>booking_truth</code> connector. This section maps the whiteboard theory to the real tables: ONT counts, optical dBm readings, router Rx/Tx power, TaskVanilla optical-power capture, and OOR trend.
+      </p>
+
+      <div class="key-points live-metrics">
+        
+      <div class="metric">
+        <span class="pill">Latest optical dBm</span>
+        <strong>83,654</strong>
+        <span>NAS/device rows on 2026-06-27; Good 67,722, Poor 15,932.</span>
+      </div>
+    
+
+      <div class="metric">
+        <span class="pill">Board OOR count</span>
+        <strong>15,932</strong>
+        <span>Devices outside the whiteboard range of about -8 to -25 dBm.</span>
+      </div>
+    
+
+      <div class="metric">
+        <span class="pill">ONT rollup</span>
+        <strong>200,394</strong>
+        <span>Active ONTs 83,984; partner rows 1,763.</span>
+      </div>
+    
+
+      <div class="metric">
+        <span class="pill">Router Rx sample</span>
+        <strong>9,698</strong>
+        <span>Median Rx -22.1 dBm; OOR rows 2,681.</span>
+      </div>
+    
+      </div>
+
+      <div class="grid two live-grid">
+        <div class="panel">
+          <h3>Latest Optical Health By dBm</h3>
+          <div class="data-table"><table><thead><tr><th>Date Ist</th><th>Optical Health</th><th>Device Rows</th><th>Nas Count</th><th>Avg Dbm</th><th>Min Dbm</th><th>Max Dbm</th><th>Optical Readings</th></tr></thead><tbody><tr><td>2026-06-27</td><td>Good</td><td>67722</td><td>67722</td><td>-18.27</td><td>-25.00</td><td>-8.00</td><td>696416</td></tr><tr><td>2026-06-27</td><td>Poor</td><td>15932</td><td>15932</td><td>-27.00</td><td>-40.00</td><td>5.00</td><td>163808</td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>OOR Percent Trend</h3>
+          <div class="data-table"><table><thead><tr><th>Date Ist</th><th>Oor Device Count</th><th>Total Devices</th><th>Oor Pct</th></tr></thead><tbody><tr><td>2026-06-26</td><td>17202</td><td>72695</td><td>23.66</td></tr><tr><td>2026-06-25</td><td>17263</td><td>73079</td><td>23.62</td></tr><tr><td>2026-06-24</td><td>17344</td><td>73292</td><td>23.66</td></tr><tr><td>2026-06-23</td><td>17489</td><td>73552</td><td>23.78</td></tr><tr><td>2026-06-22</td><td>17276</td><td>73825</td><td>23.40</td></tr><tr><td>2026-06-21</td><td>17167</td><td>73777</td><td>23.27</td></tr><tr><td>2026-06-20</td><td>17621</td><td>74267</td><td>23.73</td></tr><tr><td>2026-06-19</td><td>17634</td><td>74515</td><td>23.67</td></tr><tr><td>2026-06-18</td><td>17787</td><td>74781</td><td>23.79</td></tr><tr><td>2026-06-17</td><td>17775</td><td>75047</td><td>23.69</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="grid two live-grid">
+        <div class="panel">
+          <h3>Daily Optical Signal Trend</h3>
+          <div class="data-table"><table><thead><tr><th>Date Ist</th><th>Device Rows</th><th>Avg Dbm</th><th>Min Dbm</th><th>Max Dbm</th><th>Board Range Oor Devices</th></tr></thead><tbody><tr><td>2026-06-27</td><td>83654</td><td>-19.93</td><td>-40.00</td><td>5.00</td><td>15932</td></tr><tr><td>2026-06-26</td><td>85990</td><td>-19.95</td><td>-40.00</td><td>5.00</td><td>16981</td></tr><tr><td>2026-06-25</td><td>86463</td><td>-19.95</td><td>-40.00</td><td>5.00</td><td>17013</td></tr><tr><td>2026-06-24</td><td>86679</td><td>-19.95</td><td>-40.00</td><td>5.00</td><td>17075</td></tr><tr><td>2026-06-23</td><td>86985</td><td>-19.95</td><td>-40.00</td><td>5.00</td><td>17125</td></tr><tr><td>2026-06-22</td><td>87266</td><td>-19.95</td><td>-40.00</td><td>5.00</td><td>17120</td></tr><tr><td>2026-06-21</td><td>87248</td><td>-19.95</td><td>-40.00</td><td>5.00</td><td>17068</td></tr><tr><td>2026-06-20</td><td>87840</td><td>-19.96</td><td>-40.00</td><td>5.00</td><td>17384</td></tr><tr><td>2026-06-19</td><td>88138</td><td>-19.96</td><td>-40.00</td><td>5.00</td><td>17504</td></tr><tr><td>2026-06-18</td><td>88541</td><td>-19.96</td><td>-40.00</td><td>5.00</td><td>17579</td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>Hourly Device Ping Optical Data</h3>
+          <div class="data-table"><table><thead><tr><th>Date Ist</th><th>Hourly Rows</th><th>Device Count</th><th>Avg Optical Avg Dbm</th><th>Min Optical Dbm</th><th>Max Optical Dbm</th><th>Pings Received</th><th>Pings Missed</th></tr></thead><tbody><tr><td>2026-06-27</td><td>860224</td><td>83654</td><td>-19.92</td><td>-40</td><td>5</td><td>9898904.0</td><td>423784.0</td></tr><tr><td>2026-06-26</td><td>1929655</td><td>85998</td><td>-19.93</td><td>-40</td><td>5</td><td>22237443.0</td><td>918417.0</td></tr><tr><td>2026-06-25</td><td>1939953</td><td>86468</td><td>-19.93</td><td>-40</td><td>5</td><td>22342994.0</td><td>936442.0</td></tr><tr><td>2026-06-24</td><td>1942696</td><td>86690</td><td>-19.94</td><td>-40</td><td>5</td><td>22365950.0</td><td>946402.0</td></tr><tr><td>2026-06-23</td><td>1952078</td><td>86991</td><td>-19.93</td><td>-40</td><td>5</td><td>22447940.0</td><td>976996.0</td></tr><tr><td>2026-06-22</td><td>1962397</td><td>87272</td><td>-19.93</td><td>-40</td><td>5</td><td>22655886.0</td><td>892878.0</td></tr><tr><td>2026-06-21</td><td>1959621</td><td>87257</td><td>-19.93</td><td>-40</td><td>5</td><td>22629296.0</td><td>886156.0</td></tr><tr><td>2026-06-20</td><td>1969637</td><td>87842</td><td>-19.94</td><td>-40</td><td>5</td><td>22702889.0</td><td>932755.0</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="grid two live-grid">
+        <div class="panel">
+          <h3>Router Details Rx / Tx Power Profile</h3>
+          <div class="data-table"><table><thead><tr><th>Router Rows</th><th>Valid Rx Power Rows</th><th>Board Range Oor Rx Rows</th><th>Avg Rx Power Dbm</th><th>Min Rx Power Dbm</th><th>P10 Rx Power Dbm</th><th>Median Rx Power Dbm</th><th>P90 Rx Power Dbm</th><th>Max Rx Power Dbm</th><th>Avg Tx Power Dbm</th></tr></thead><tbody><tr><td>277956</td><td>9698</td><td>2681</td><td>-21.9</td><td>-40.0</td><td>-28.0</td><td>-22.1</td><td>-15.4</td><td>3.16</td><td>2.22</td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>Router Rx Sample, Worst Active First</h3>
+          <div class="data-table"><table><thead><tr><th>Nas Id</th><th>Rx Power Dbm</th><th>Tx Power Dbm</th><th>Is Customer Active</th><th>Is Plan Active</th><th>Modified Time</th><th>Board Range Status</th></tr></thead><tbody><tr><td>32412</td><td>-30.5</td><td>1.7</td><td>1</td><td>1</td><td>2026-06-27 10:01:11.182</td><td>outside board -8 to -25 dBm</td></tr><tr><td>378510</td><td>-29.2</td><td>2.3</td><td>1</td><td>1</td><td>2026-06-24 10:01:11.545</td><td>outside board -8 to -25 dBm</td></tr><tr><td>31727</td><td>-27.7</td><td>2.0</td><td>1</td><td>1</td><td>2026-06-27 10:01:11.182</td><td>outside board -8 to -25 dBm</td></tr><tr><td>421847</td><td>-27.45</td><td>2.2</td><td>1</td><td>1</td><td>2026-06-24 10:01:11.545</td><td>outside board -8 to -25 dBm</td></tr><tr><td>362623</td><td>-24.9</td><td>2.3</td><td>1</td><td>1</td><td>2026-06-24 10:01:11.545</td><td>inside board range</td></tr><tr><td>463329</td><td>-24.8</td><td>2.1</td><td>1</td><td>1</td><td>2026-06-24 10:01:11.545</td><td>inside board range</td></tr><tr><td>417485</td><td>-23.9</td><td>2.5</td><td>1</td><td>1</td><td>2026-06-27 10:01:11.182</td><td>inside board range</td></tr><tr><td>20991</td><td>-21.4</td><td>2.1</td><td>1</td><td>1</td><td>2026-06-27 10:01:11.182</td><td>inside board range</td></tr><tr><td>420574</td><td>-21.4</td><td>2.1</td><td>1</td><td>1</td><td>2026-06-24 10:01:11.545</td><td>inside board range</td></tr><tr><td>512036</td><td>-19.7</td><td>2.4</td><td>1</td><td>1</td><td>2026-06-24 10:01:11.545</td><td>inside board range</td></tr><tr><td>31740</td><td>-19.7</td><td>1.7</td><td>1</td><td>1</td><td>2026-06-27 10:01:11.182</td><td>inside board range</td></tr><tr><td>32146</td><td>-18.2</td><td>2.1</td><td>1</td><td>1</td><td>2026-06-27 10:01:11.182</td><td>inside board range</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="grid two live-grid">
+        <div class="panel">
+          <h3>TaskVanilla Optical Power Events</h3>
+          <div class="data-table"><table><thead><tr><th>Event Name</th><th>Optical Power Source</th><th>Event Rows</th><th>Numeric Optical Power Rows</th><th>Avg Optical Dbm</th><th>Min Optical Dbm</th><th>Max Optical Dbm</th><th>Latest Added Time</th></tr></thead><tbody><tr><td>SPEED_TEST</td><td>SPEED_TEST</td><td>2947</td><td>2947</td><td>-17.78</td><td>-25.0</td><td>0.0</td><td>2026-06-27 07:01:45.239</td></tr><tr><td>DEVICE_PHOTO</td><td>SPEED_TEST</td><td>1972</td><td>1972</td><td>-18.09</td><td>-25.0</td><td>0.0</td><td>2026-06-27 07:01:25.499</td></tr><tr><td>CONNECTION_INFO</td><td>SPEED_TEST</td><td>1868</td><td>1868</td><td>-18.17</td><td>-25.0</td><td>0.0</td><td>2026-06-27 07:01:25.341</td></tr><tr><td>OTP_VERIFIED</td><td>SPEED_TEST</td><td>1864</td><td>1864</td><td>-18.34</td><td>-25.0</td><td>0.0</td><td>2026-06-27 07:03:48.297</td></tr><tr><td>RATING</td><td>SPEED_TEST</td><td>1859</td><td>1859</td><td>-18.33</td><td>-25.0</td><td>0.0</td><td>2026-06-27 07:03:52.156</td></tr><tr><td>INSTALLATION_IN_PROGRESS_POST_FEE</td><td>SPEED_TEST</td><td>10</td><td>7</td><td>-19.2</td><td>-19.2</td><td>-19.2</td><td>2026-05-19 12:20:10.194</td></tr><tr><td>INSTALLATION_IN_PROGRESS_POST_FEE</td><td></td><td>4</td><td>0</td><td></td><td></td><td></td><td>2026-05-19 12:20:10.194</td></tr><tr><td>SHARED</td><td>SPEED_TEST</td><td>2</td><td>2</td><td>0.0</td><td>0.0</td><td>0.0</td><td>2026-06-21 14:32:05.978</td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>ONT Counts From Partner Janam Kundli</h3>
+          <div class="data-table"><table><thead><tr><th>Partner Rows</th><th>Total Devices</th><th>Total Onts</th><th>Active Onts</th><th>Churned Onts</th><th>Partner Office Onts</th><th>Repair Onts</th><th>Total Routers</th><th>Active Routers</th><th>Active Customers With Optical Power</th></tr></thead><tbody><tr><td>1763</td><td>227169</td><td>200394</td><td>83984</td><td>30839</td><td>85502</td><td>69</td><td>26775</td><td>10028</td><td>84840</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="grid two live-grid">
+        <div class="panel">
+          <h3>Top Partner ONT Rows</h3>
+          <div class="data-table"><table><thead><tr><th>Total Devices</th><th>Total Onts</th><th>Active Onts</th><th>Churned Onts</th><th>Partner Office Onts</th><th>Total Routers</th><th>Active Customers With Optical Power</th></tr></thead><tbody><tr><td>923</td><td>850</td><td>640</td><td>77</td><td>133</td><td>73</td><td></td></tr><tr><td>765</td><td>700</td><td>599</td><td>80</td><td>21</td><td>65</td><td></td></tr><tr><td>940</td><td>797</td><td>526</td><td>220</td><td>51</td><td>143</td><td></td></tr><tr><td>1044</td><td>939</td><td>516</td><td>296</td><td>127</td><td>105</td><td></td></tr><tr><td>991</td><td>901</td><td>497</td><td>366</td><td>37</td><td>90</td><td></td></tr><tr><td>768</td><td>757</td><td>494</td><td>29</td><td>234</td><td>11</td><td></td></tr><tr><td>772</td><td>772</td><td>476</td><td>79</td><td>217</td><td>0</td><td></td></tr><tr><td>693</td><td>693</td><td>464</td><td>45</td><td>184</td><td>0</td><td></td></tr><tr><td>814</td><td>723</td><td>450</td><td>207</td><td>66</td><td>91</td><td></td></tr><tr><td>682</td><td>584</td><td>433</td><td>114</td><td>37</td><td>98</td><td></td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>Booking ONT Field Distribution</h3>
+          <div class="data-table"><table><thead><tr><th>Ont</th><th>Booking Rows</th><th>Distinct Device Ids</th></tr></thead><tbody><tr><td></td><td>5422812</td><td>127769</td></tr><tr><td>1231.0</td><td>1</td><td>1</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="grid two live-grid">
+        <div class="panel">
+          <h3>Install/Incentive Optical Power Profile</h3>
+          <div class="data-table"><table><thead><tr><th>Rows With Optical Power</th><th>Avg Optical Power</th><th>Min Optical Power</th><th>P10 Optical Power</th><th>Median Optical Power</th><th>P90 Optical Power</th><th>Max Optical Power</th></tr></thead><tbody><tr><td>175281</td><td>-18.50</td><td>-102.00</td><td>-24.81</td><td>-19.39</td><td>0.00</td><td>6.33</td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>Where The Data Lives</h3>
+          <div class="data-table"><table><thead><tr><th>Table Schema</th><th>Table Name</th><th>Row Count</th><th>Last Altered</th></tr></thead><tbody><tr><td>DBT</td><td>HOURLY_DEVICE_PING_INFLUX</td><td>165526317</td><td>2026-06-27 13:41:45.556000+05:30</td></tr><tr><td>PUBLIC</td><td>ROUTER_DETAILS_AUDIT</td><td>35854602</td><td>2026-06-27 10:01:12.530000+05:30</td></tr><tr><td>DBT</td><td>TASKVANILLA_AUDIT</td><td>21235871</td><td>2026-06-27 12:51:15.855000+05:30</td></tr><tr><td>DBT</td><td>FCT_OPTICAL_SIGNAL</td><td>9039555</td><td>2026-06-27 12:54:48.281000+05:30</td></tr><tr><td>DBT</td><td>AVG_OPTICAL_SIGNAL</td><td>7887023</td><td>2026-06-11 12:07:47.130000+05:30</td></tr><tr><td>DYNAMODB</td><td>BOOKING</td><td>5422813</td><td>2026-06-27 13:40:04.742000+05:30</td></tr><tr><td>PUBLIC</td><td>ROUTER_DETAILS</td><td>323951</td><td>2026-06-27 10:12:09.903000+05:30</td></tr><tr><td>DYNAMODB</td><td>IN_P_INCENTIVE_PROCESSING_SCHEDULE</td><td>175281</td><td>2026-01-18 13:22:29.905000+05:30</td></tr><tr><td>DBT</td><td>PARTNER_JANAM_KUNDLI</td><td>1763</td><td>2026-06-27 13:05:00.077000+05:30</td></tr><tr><td>DBT</td><td>FCT_OPTICAL_OOR_PCT</td><td>89</td><td>2026-06-27 13:04:30.036000+05:30</td></tr><tr><td>PUBLIC</td><td>GX_ROUTER_HOURLY_DATA</td><td>8</td><td>2026-02-26 17:06:25.228000+05:30</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="visual-card live-map">
+        <div class="visual-title">
+          <h3>Whiteboard Term To Snowflake Reality</h3>
+          <p>OLT is the upstream launch concept from the board. The queried warehouse exposes the customer-side measurements more clearly: ONTs, NAS IDs, optical dBm, Rx/Tx power, and OOR status.</p>
+        </div>
+        <div class="device-map">
+          <div class="device"><div class="device-symbol">OLT</div><b>Not found as a table/column</b><p>Exact OLT table or column search returned 0 rows. Snowflake has ONT counts and optical/Rx power measurements, but not a clear OLT inventory table in the queried schemas.</p></div>
+          <div class="device"><div class="device-symbol">ONT</div><b>Partner rollup</b><p><code>DBT.PARTNER_JANAM_KUNDLI</code> has total, active, churned, partner-office, repair ONT counts.</p></div>
+          <div class="device"><div class="device-symbol">dBm</div><b>Optical signal</b><p><code>DBT.FCT_OPTICAL_SIGNAL</code> has <code>AVG_OPTICAL_DBM</code>, readings, and health.</p></div>
+          <div class="device"><div class="device-symbol">Rx</div><b>Router details</b><p><code>PUBLIC.ROUTER_DETAILS</code> has direct <code>rx_power</code> and <code>tx_power</code> readings.</p></div>
+        </div>
+      </div>
+
+      <div class="panel live-grid">
+        <h3>Matched Signal Tables / Columns</h3>
+        <div class="data-table"><table><thead><tr><th>Table Schema</th><th>Table Name</th><th>Row Count</th><th>Value Columns</th><th>Context Columns</th><th>Last Altered</th></tr></thead><tbody><tr><td>PUBLIC</td><td>PARTNER_JANAM_KUNDLI2</td><td>0.0</td><td>ACTIVE_CUSTOMER_WITH_OPTICAL_POWER</td><td>CLAIM_DEVICE_BONUS_M0, CLAIM_DEVICE_BONUS_M1, CLAIM_DEVICE_BONUS_M2, CLAIM_DEVICE_BONUS_M3, DEVICE_BONUS_M0, DEVICE_BONUS_M1, DEVICE_BONUS_M2, DEVICE_BONUS_M3, DEVICE_BONUS_M1_MTD, DEVICE_BONUS_M2_MTD, DEVICE_BONUS_M3_MTD, ACTIVE_CUSTOMER_WITH_OPTICAL_POWER, DEVICE_TICKET_M0, DEVICE_TICKET_M1, DEVICE_TICKET_M2, DEVICE_TICKET_M3, DEVICE_TICKET_SLA_M0, DEVICE_TICKET_SLA_M1, DEVICE_TICKET_SLA_M2, DEVICE_TICKET_SLA_M3</td><td>2026-03-24 08:05:01.235000+05:30</td></tr><tr><td>DYNAMODB</td><td>SECONDARY_SIGNAL_ROUTER_PLAN_INFO</td><td>25544722.0</td><td></td><td>ENTRY_UNIX_EPOCH_TIME, CREATED_TIME, FIRST_RECHARGE_TIME, PLAN_START_TIME, DEVICE_LIMIT, LCO_ACCOUNT_ID, ENTRY_DATE, TIME_PLAN, LONG_SECONDARY_NAS, PLAN_ID, PLAN_END_TIME, STATUS, CONNECTION, PLAN_AMOUNT, AUTH_STATE, UPDATE_AT, PLAN_NAME, PLAN_INCREASED_IN_SEC</td><td>2026-06-27 13:39:06.490000+05:30</td></tr><tr><td>DBT</td><td>PARTNER_JANAM_KUNDLI</td><td>1763.0</td><td>ACTIVE_CUSTOMER_WITH_OPTICAL_POWER</td><td>ACTIVE_CUSTOMER_WITH_OPTICAL_POWER, CLAIM_DEVICE_BONUS_M0, DEVICE_BONUS_M0, DEVICE_BONUS_M1, DEVICE_TICKET_M1, DEVICE_TICKET_SLA_M1, DEVICE_TICKET_M2, DEVICE_TICKET_SLA_M2, DEVICE_TICKET_M3, DEVICE_TICKET_SLA_M3, TOTAL_DEVICES, TOTAL_ROUTERS, ACTIVE_ROUTERS, CHURNED_ROUTERS, PARTNER_OFFICE_ROUTERS, REPAIR_ROUTERS, PARTNER_RECOVERED_ROUTERS</td><td>2026-06-27 13:05:00.077000+05:30</td></tr><tr><td>PUBLIC</td><td>PARTNER_GROWTH_CARD_RAW</td><td>1078.0</td><td>ACTIVE_CUSTOMER_WITH_OPTICAL_POWER</td><td>CLAIM_DEVICE_BONUS_M0, CLAIM_DEVICE_BONUS_M1, CLAIM_DEVICE_BONUS_M2, CLAIM_DEVICE_BONUS_M3, DEVICE_BONUS_M0, DEVICE_BONUS_M1, DEVICE_BONUS_M2, DEVICE_BONUS_M3, ACTIVE_CUSTOMER_WITH_OPTICAL_POWER, DEVICE_TICKET_M0, DEVICE_TICKET_M1, DEVICE_TICKET_M2, DEVICE_TICKET_M3, DEVICE_TICKET_SLA_M0, DEVICE_TICKET_SLA_M1, DEVICE_TICKET_SLA_M2, DEVICE_TICKET_SLA_M3</td><td>2026-06-27 12:45:41.567000+05:30</td></tr><tr><td>PUBLIC</td><td>PARTNER_JANAM_KUNDLI</td><td>1763.0</td><td>ACTIVE_CUSTOMER_WITH_OPTICAL_POWER</td><td>ACTIVE_CUSTOMER_WITH_OPTICAL_POWER, CLAIM_DEVICE_BONUS_M0, DEVICE_BONUS_M0, DEVICE_BONUS_M1, DEVICE_TICKET_M1, DEVICE_TICKET_SLA_M1, DEVICE_TICKET_M2, DEVICE_TICKET_SLA_M2, DEVICE_TICKET_M3, DEVICE_TICKET_SLA_M3, TOTAL_DEVICES, TOTAL_ROUTERS, ACTIVE_ROUTERS, CHURNED_ROUTERS, PARTNER_OFFICE_ROUTERS, REPAIR_ROUTERS, PARTNER_RECOVERED_ROUTERS</td><td>2026-06-27 13:21:20.853000+05:30</td></tr><tr><td>DBT</td><td>AVG_OPTICAL_SIGNAL</td><td>7887023.0</td><td>AVG_OPTICAL_DBM, OPTICAL_READINGS, OPTICAL_HEALTH</td><td>DATE_IST</td><td>2026-06-11 12:07:47.130000+05:30</td></tr><tr><td>DBT</td><td>FCT_OPTICAL_SIGNAL</td><td>9039555.0</td><td>AVG_OPTICAL_DBM, OPTICAL_READINGS, OPTICAL_HEALTH</td><td>DATE_IST</td><td>2026-06-27 12:54:48.281000+05:30</td></tr><tr><td>PUBLIC</td><td>HOURLY_DEVICE_PING_INFLUX</td><td>155560913.0</td><td>OPTICAL_MIN, OPTICAL_AVG, OPTICAL_MAX, OPTICAL_IN_RANGE_PINGS</td><td>DEVICE_ID</td><td>2026-06-27 12:09:10.356000+05:30</td></tr><tr><td>PUBLIC</td><td>HOURLY_DEVICE_PING_SUMMARY</td><td>174439791.0</td><td>OPTICAL_MIN, OPTICAL_MAX, OPTICAL_SUM, OPTICAL_CNT</td><td>DEVICE_ID</td><td>2026-06-27 13:18:03.566000+05:30</td></tr><tr><td>PUBLIC</td><td>HOURLY_DEVICE_PING_SUMMARY_22_JAN_TEST</td><td>282729.0</td><td>OPTICAL_MIN, OPTICAL_MAX, OPTICAL_SUM, OPTICAL_CNT</td><td>DEVICE_ID</td><td>2026-01-22 16:22:54.484000+05:30</td></tr><tr><td>PUBLIC</td><td>COMPLIANCE_CUSTOMER_SIGNALS</td><td>11040.0</td><td>PARTNER_SIGNAL_ID, SIGNAL_CODE</td><td>PARTNER_ACCOUNT_ID, CUSTOMER_MOBILE, CUSTOMER_ACCOUNT_ID, DEVICE_ID</td><td>2026-06-27 09:05:55.272000+05:30</td></tr><tr><td>DYNAMODB</td><td>HOME_ROUTER_PLAN_INFO</td><td>6405404.0</td><td></td><td>ENTRY_UNIX_EPOCH_TIME, PLAN_START_TIME, LCO_ACCOUNT_ID, PLAN_AMOUNT, CONNECTION, CREATED_TIME, FIRST_RECHARGE_TIME, DEVICE_ID, DEVICE_LIMIT, PLAN_INCREASED_IN_SEC, ACCOUNT_ID, TIME_PLAN, PLAN_ID, PLAN_END_TIME, ENTRY_DATE</td><td>2026-06-27 13:39:13.495000+05:30</td></tr><tr><td>PUBLIC</td><td>DYNAMO_HOME_ROUTER_PLAN_INFO</td><td>nan</td><td></td><td>ENTRY_UNIX_EPOCH_TIME, PLAN_START_TIME, LCO_ACCOUNT_ID, PLAN_AMOUNT, ENTRY_DATE, CONNECTION, CREATED_TIME, FIRST_RECHARGE_TIME, DEVICE_ID, DEVICE_LIMIT, PLAN_INCREASED_IN_SEC, ACCOUNT_ID, TIME_PLAN, PLAN_ID, PLAN_END_TIME</td><td>2025-10-08 11:10:03.206000+05:30</td></tr><tr><td>PUBLIC</td><td>DYNAMO_HOME_ROUTER_PLAN_INFO_AUDIT</td><td>nan</td><td></td><td>ENTRY_UNIX_EPOCH_TIME, PLAN_ID, ACCOUNT_ID, PLAN_START_TIME, TIME_PLAN, PLAN_END_TIME, CREATED_TIME, DEVICE_LIMIT, ENTRY_DATE, FIRST_RECHARGE_TIME, CONNECTION, LCO_ACCOUNT_ID, PLAN_INCREASED_IN_SEC, PLAN_AMOUNT, DEVICE_ID</td><td>2025-10-08 11:09:35.874000+05:30</td></tr><tr><td>PUBLIC</td><td>GX_ROUTER_HOURLY_DATA</td><td>8.0</td><td>RX_POWER_AVG, RX_POWER_MAX, RX_POWER_MIN</td><td>_TIME, DEVICE_ID</td><td>2026-02-26 17:06:25.228000+05:30</td></tr></tbody></table></div>
+      </div>
+
+      <p class="live-data-foot">
+        Query refresh: 2026-06-27T08:14:02.390111+00:00. Cached files are under <code>dbm_journey/data</code>. No Snowflake credentials are embedded in this HTML.
+      </p>
+    </section>
+    
+    <section>
+      <h2>Operational Takeaways</h2>
+      <div class="grid three">
+        <div class="panel">
+          <div class="takeaway-art split-budget"></div>
+          <h3>Keep the split budget realistic</h3>
+          <p>Stacking too many splitters quickly exhausts the optical budget. A 1x8 + 1x8 + 1x4 + 1x8 chain is already about 33 dB before any outside-plant loss.</p>
+        </div>
+        <div class="panel">
+          <div class="takeaway-art measure-power"></div>
+          <h3>Measure customer Rx power</h3>
+          <p>The practical acceptance check is the ONT receive power at the customer location. The board's target window is about -8 to -25 dBm.</p>
+        </div>
+        <div class="panel">
+          <div class="takeaway-art loss-stack">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <h3>Track small losses</h3>
+          <p>Splices, patch cords, tight bends, dirty connectors, and JC boxes look small individually, but together can push a borderline customer out of range.</p>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer">
+      OCR note: this page is reconstructed from the visible handwriting. Very faint or partially cropped marks were interpreted using standard GPON/FTTH link-budget theory.
+    </p>
+  </main>
+</body>
+</html>

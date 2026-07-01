@@ -1,0 +1,2238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GPON / FTTH Whiteboard Notes</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172026;
+      --muted: #64717d;
+      --line: #d9e1e8;
+      --paper: #f7f9fb;
+      --panel: #ffffff;
+      --blue: #1f6feb;
+      --blue-soft: #e8f1ff;
+      --green: #227a52;
+      --green-soft: #e9f7ef;
+      --orange: #a05612;
+      --orange-soft: #fff4e3;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+    }
+
+    * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    html,
+    body {
+      overflow-x: hidden;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 3.4rem;
+      max-width: 900px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    p,
+    li,
+    td,
+    th,
+    span,
+    strong,
+    b,
+    h1,
+    h2,
+    h3 {
+      overflow-wrap: anywhere;
+    }
+
+    .subhead {
+      max-width: 860px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    section {
+      margin-top: 24px;
+    }
+
+    .panel,
+    .photo,
+    .note,
+    .formula,
+    .step,
+    .metric,
+    .warning {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .panel,
+    .note,
+    .formula,
+    .warning {
+      padding: 18px;
+    }
+
+    .photo {
+      overflow: hidden;
+    }
+
+    .photo img {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      background: #eef2f6;
+    }
+
+    .caption {
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .key-points {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      padding: 14px;
+      min-height: 126px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 700;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(116px, 1fr));
+      align-items: stretch;
+      gap: 18px;
+      margin-top: 14px;
+    }
+
+    .node {
+      position: relative;
+      padding: 14px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      min-height: 92px;
+    }
+
+    .node:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -18px;
+      top: 34px;
+      color: var(--muted);
+      font-weight: 700;
+      background: var(--paper);
+      width: 14px;
+      text-align: center;
+    }
+
+    .node b {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .node small {
+      color: var(--muted);
+    }
+
+    .loss {
+      color: var(--red);
+      font-weight: 800;
+    }
+
+    .ok {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .formula {
+      background: #fbfcfe;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      overflow-x: auto;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    table {
+      width: 100%;
+      max-width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef4f8;
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      color: #40505f;
+      letter-spacing: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+      margin: 0;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .transcript {
+      columns: 2;
+      column-gap: 32px;
+    }
+
+    .transcript li {
+      break-inside: avoid;
+      margin-bottom: 8px;
+    }
+
+    .warning {
+      background: var(--red-soft);
+      border-color: #ffd2cc;
+    }
+
+    .note {
+      background: var(--green-soft);
+      border-color: #c9ead7;
+    }
+
+    .example {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .step {
+      padding: 14px;
+    }
+
+    .step + .step {
+      margin-top: 10px;
+    }
+
+    .visual-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .visual-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .visual-title p {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .device-map {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .device {
+      position: relative;
+      min-height: 172px;
+      padding: 16px 14px;
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .device:not(:last-child)::after {
+      content: "fiber";
+      position: absolute;
+      right: -44px;
+      top: 47px;
+      width: 64px;
+      height: 24px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-align: center;
+      border-top: 3px solid #6aa4e8;
+      z-index: 2;
+    }
+
+    .device-symbol {
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      background: var(--blue-soft);
+      color: #134da1;
+      border: 1px solid #bdd5ff;
+      font-weight: 800;
+    }
+
+    .device:nth-child(2) .device-symbol {
+      background: var(--orange-soft);
+      color: var(--orange);
+      border-color: #f5d3a4;
+    }
+
+    .device:nth-child(3) .device-symbol {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: #bfe4cf;
+    }
+
+    .device:nth-child(4) .device-symbol {
+      background: var(--red-soft);
+      color: var(--red);
+      border-color: #ffc9c2;
+    }
+
+    .device b,
+    .mini-card b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .device p,
+    .mini-card p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .power-visuals {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .gauge-track {
+      position: relative;
+      height: 32px;
+      margin: 26px 10px 30px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #ffd9d5 0 29%, #d7f1de 29% 77%, #fff0c2 77% 100%);
+      border: 1px solid var(--line);
+    }
+
+    .gauge-band {
+      position: absolute;
+      top: -24px;
+      left: 29%;
+      right: 23%;
+      text-align: center;
+      color: var(--green);
+      font-weight: 800;
+      font-size: 0.86rem;
+    }
+
+    .gauge-marker {
+      position: absolute;
+      top: -9px;
+      width: 3px;
+      height: 50px;
+      background: var(--ink);
+      border-radius: 4px;
+    }
+
+    .gauge-marker::after {
+      content: attr(data-label);
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 78px;
+      text-align: center;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 0.82rem;
+    }
+
+    .marker-low {
+      left: 11%;
+      background: var(--red);
+    }
+
+    .marker-min {
+      left: 29%;
+      background: var(--green);
+    }
+
+    .marker-max {
+      left: 77%;
+      background: var(--green);
+    }
+
+    .gauge-scale {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin: 0 10px;
+    }
+
+    .waterfall {
+      display: grid;
+      gap: 9px;
+    }
+
+    .water-row {
+      display: grid;
+      grid-template-columns: 104px minmax(0, 1fr) 72px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .water-bar {
+      height: 18px;
+      border-radius: 999px;
+      background: #dde9f6;
+      overflow: hidden;
+      border: 1px solid #ccdae8;
+    }
+
+    .water-fill {
+      display: block;
+      height: 100%;
+      background: #2f80ed;
+    }
+
+    .water-row.loss-row .water-fill {
+      background: #d86c5b;
+    }
+
+    .water-row.final-row .water-fill {
+      background: var(--red);
+    }
+
+    .splitter-demo {
+      display: grid;
+      grid-template-columns: minmax(190px, 0.8fr) minmax(0, 1.2fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .split-box {
+      position: relative;
+      min-height: 218px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 18px;
+    }
+
+    .split-box::after {
+      content: "8 customer branches";
+      position: absolute;
+      right: 18px;
+      bottom: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .split-center {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 74px;
+      height: 74px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--orange-soft);
+      color: var(--orange);
+      border: 1px solid #f5d3a4;
+      font-weight: 800;
+    }
+
+    .branches {
+      margin-left: 105px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(36px, 1fr));
+      gap: 14px;
+      height: 162px;
+      align-content: center;
+    }
+
+    .branch {
+      position: relative;
+      min-height: 44px;
+      border-left: 2px solid #6aa4e8;
+      border-bottom: 2px solid #6aa4e8;
+    }
+
+    .branch::after {
+      content: "";
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #ffffff;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .mini-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    .story-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(340px, 1.05fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .story-copy {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+
+    .story-copy h2 {
+      font-size: 1.75rem;
+    }
+
+    .story-copy p + p {
+      margin-top: 12px;
+    }
+
+    .story-strip {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .story-chip {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdff;
+      min-height: 92px;
+    }
+
+    .story-chip b {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .story-chip span {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .home-visual {
+      min-height: 360px;
+      background: linear-gradient(180deg, #eef7ff 0%, #ffffff 52%, #edf7ef 52%, #edf7ef 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sky-label,
+    .ground-label {
+      position: absolute;
+      left: 20px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .sky-label {
+      top: 16px;
+    }
+
+    .ground-label {
+      bottom: 16px;
+    }
+
+    .office-tower,
+    .home-box,
+    .street-cabinet {
+      position: absolute;
+      bottom: 54px;
+      border: 2px solid #40505f;
+      background: #ffffff;
+      border-radius: 6px;
+      z-index: 2;
+    }
+
+    .office-tower {
+      left: 42px;
+      width: 86px;
+      height: 170px;
+      display: grid;
+      grid-template-rows: 42px 1fr;
+      overflow: hidden;
+    }
+
+    .office-tower::before {
+      content: "ISP";
+      display: grid;
+      place-items: center;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      border-bottom: 2px solid #40505f;
+    }
+
+    .street-cabinet {
+      left: 48%;
+      width: 74px;
+      height: 96px;
+      transform: translateX(-50%);
+      background: var(--orange-soft);
+    }
+
+    .street-cabinet::before {
+      content: "SPLIT";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--orange);
+      font-weight: 800;
+      font-size: 0.78rem;
+    }
+
+    .home-box {
+      right: 42px;
+      width: 128px;
+      height: 112px;
+      border-radius: 6px 6px 4px 4px;
+    }
+
+    .home-box::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      right: -10px;
+      top: -42px;
+      height: 48px;
+      background: var(--green-soft);
+      border: 2px solid #40505f;
+      transform: skewX(-18deg);
+      border-radius: 6px 6px 0 0;
+    }
+
+    .home-box::after {
+      content: "ONT";
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfdff;
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .fiber-line {
+      position: absolute;
+      left: 124px;
+      right: 146px;
+      bottom: 124px;
+      height: 5px;
+      background: linear-gradient(90deg, #2f80ed, #66b37a, #d86c5b);
+      border-radius: 999px;
+      z-index: 1;
+    }
+
+    .fiber-loss {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 32px;
+      border-radius: 999px;
+      border: 1px solid #ffc9c2;
+      background: var(--red-soft);
+      color: var(--red);
+      font-weight: 800;
+      font-size: 0.78rem;
+      z-index: 4;
+    }
+
+    .fiber-loss.one {
+      left: 29%;
+      bottom: 145px;
+    }
+
+    .fiber-loss.two {
+      left: 52%;
+      bottom: 145px;
+    }
+
+    .fiber-loss.three {
+      right: 18%;
+      bottom: 164px;
+    }
+
+    .story-track {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .story-scene {
+      position: relative;
+      min-height: 238px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .story-scene::before {
+      content: attr(data-step);
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .scene-art {
+      height: 76px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      background: #f0f5fa;
+      border: 1px solid var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scene-art .beam {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      top: 36px;
+      height: 5px;
+      border-radius: 999px;
+      background: #2f80ed;
+    }
+
+    .scene-art.loss-art .beam {
+      background: linear-gradient(90deg, #2f80ed 0 35%, #d86c5b 35% 100%);
+      width: 56%;
+      right: auto;
+    }
+
+    .scene-art.split-art .beam::after,
+    .scene-art.split-art .beam::before {
+      content: "";
+      position: absolute;
+      right: -6px;
+      width: 48px;
+      height: 4px;
+      border-radius: 999px;
+      background: #6aa4e8;
+    }
+
+    .scene-art.split-art .beam::before {
+      top: -16px;
+      transform: rotate(-24deg);
+    }
+
+    .scene-art.split-art .beam::after {
+      top: 16px;
+      transform: rotate(24deg);
+    }
+
+    .scene-art.bad-art {
+      background: var(--red-soft);
+      border-color: #ffc9c2;
+    }
+
+    .scene-art.bad-art .beam {
+      width: 22%;
+      right: auto;
+      background: var(--red);
+    }
+
+    .story-scene b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .story-scene p {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .route-compare {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .route-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 18px;
+    }
+
+    .route-card.good {
+      border-color: #bfe4cf;
+      background: #f7fcf9;
+    }
+
+    .route-card.bad {
+      border-color: #ffc9c2;
+      background: #fffafa;
+    }
+
+    .route-path {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(72px, 1fr));
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .route-hop {
+      min-height: 58px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      font-weight: 800;
+      font-size: 0.82rem;
+      overflow-wrap: anywhere;
+    }
+
+    .route-card.good .route-hop {
+      border-color: #bfe4cf;
+    }
+
+    .route-card.bad .route-hop {
+      border-color: #ffc9c2;
+    }
+
+    .receipt {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .receipt-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 78px;
+      gap: 10px;
+      align-items: center;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .receipt-row:last-child {
+      border-bottom: 0;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .decision-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .decision {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 14px;
+      min-height: 132px;
+    }
+
+    .decision span {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .decision b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .decision p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .budget-machine {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .budget-token {
+      position: relative;
+      min-height: 118px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 14px;
+    }
+
+    .budget-token:not(:last-child)::after {
+      content: "-";
+      position: absolute;
+      right: -12px;
+      top: 42px;
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font-weight: 800;
+      z-index: 2;
+    }
+
+    .budget-token.final:not(:last-child)::after {
+      content: "";
+    }
+
+    .budget-token b {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .budget-token strong {
+      display: block;
+      color: var(--blue);
+      font-size: 1.15rem;
+      margin-bottom: 6px;
+    }
+
+    .budget-token span {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .budget-token.final {
+      background: var(--green-soft);
+      border-color: #bfe4cf;
+    }
+
+    .loss-ladder {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 0 16px;
+    }
+
+    .loss-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 14px;
+      min-height: 146px;
+    }
+
+    .loss-card b {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .loss-card b span {
+      color: var(--red);
+      font-size: 1.1rem;
+    }
+
+    .loss-meter {
+      height: 78px;
+      display: grid;
+      align-items: end;
+      border-left: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding-left: 8px;
+    }
+
+    .loss-column {
+      display: block;
+      width: 44px;
+      border-radius: 7px 7px 0 0;
+      background: linear-gradient(180deg, #f08b7a, var(--red));
+    }
+
+    .loss-card p {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 10px;
+    }
+
+    .pon-visual {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .pon-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 18px;
+    }
+
+    .pon-tree {
+      min-height: 248px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 22px;
+      align-items: center;
+    }
+
+    .pon-root {
+      min-height: 92px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #bdd5ff;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+    }
+
+    .customer-dots {
+      display: grid;
+      grid-template-columns: repeat(16, minmax(8px, 1fr));
+      gap: 8px;
+      align-items: center;
+    }
+
+    .customer-dots span {
+      aspect-ratio: 1;
+      border-radius: 999px;
+      background: #b7d7ff;
+      border: 1px solid #8ebdf5;
+    }
+
+    .pon-callout {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .system-visual {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 132px minmax(0, 1fr);
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .system-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .system-pill {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px 14px;
+      min-height: 54px;
+    }
+
+    .system-pill b {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .system-pill span {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .engine-core {
+      min-height: 132px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #bdd5ff;
+      background: var(--blue-soft);
+      color: #134da1;
+      font-weight: 800;
+      padding: 14px;
+    }
+
+    .output-card {
+      border: 1px solid #bfe4cf;
+      border-radius: 8px;
+      background: var(--green-soft);
+      padding: 16px;
+    }
+
+    .output-card strong {
+      display: block;
+      color: var(--green);
+      font-size: 1.25rem;
+      margin: 8px 0;
+    }
+
+    .status-bars {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .status-bar {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .status-line {
+      height: 12px;
+      border-radius: 999px;
+      background: #d9e1e8;
+      overflow: hidden;
+    }
+
+    .status-line span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+    }
+
+    .status-line.pass span {
+      width: 78%;
+      background: var(--green);
+    }
+
+    .status-line.warn span {
+      width: 48%;
+      background: #d8952f;
+    }
+
+    .status-line.fail span {
+      width: 22%;
+      background: var(--red);
+    }
+
+    .takeaway-art {
+      height: 116px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fbfdff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .takeaway-art.split-budget::before,
+    .takeaway-art.measure-power::before,
+    .takeaway-art.loss-stack::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border-radius: 8px;
+    }
+
+    .takeaway-art.split-budget::before {
+      background:
+        linear-gradient(90deg, transparent 0 45%, #6aa4e8 45% 49%, transparent 49%),
+        linear-gradient(24deg, transparent 0 48%, #6aa4e8 48% 52%, transparent 52%),
+        linear-gradient(-24deg, transparent 0 48%, #6aa4e8 48% 52%, transparent 52%);
+    }
+
+    .takeaway-art.split-budget::after {
+      content: "split budget";
+      position: absolute;
+      left: 18px;
+      bottom: 14px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .takeaway-art.measure-power::before {
+      border: 12px solid #d7f1de;
+      border-top-color: #ffd9d5;
+      border-right-color: #fff0c2;
+      border-radius: 999px;
+    }
+
+    .takeaway-art.measure-power::after {
+      content: "-18 dBm";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .takeaway-art.loss-stack span {
+      position: absolute;
+      left: 26px;
+      right: 26px;
+      height: 16px;
+      border-radius: 999px;
+      background: #d86c5b;
+    }
+
+    .takeaway-art.loss-stack span:nth-child(1) {
+      top: 24px;
+      width: 72%;
+    }
+
+    .takeaway-art.loss-stack span:nth-child(2) {
+      top: 50px;
+      width: 58%;
+    }
+
+    .takeaway-art.loss-stack span:nth-child(3) {
+      top: 76px;
+      width: 38%;
+    }
+
+    .footer {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        width: 84vw;
+        max-width: 84vw;
+        padding: 16px 0 40px;
+      }
+
+      h1 {
+        font-size: 1.55rem;
+        max-width: 100%;
+        word-break: break-word;
+      }
+
+      h2 {
+        font-size: 1.1rem;
+      }
+
+      .subhead {
+        font-size: 0.88rem;
+      }
+
+      .grid.two,
+      .grid.three,
+      .key-points,
+      .example,
+      .device-map,
+      .power-visuals,
+      .splitter-demo,
+      .mini-grid,
+      .story-hero,
+      .story-strip,
+      .story-track,
+      .route-compare,
+      .decision-strip,
+      .budget-machine,
+      .loss-ladder,
+      .pon-visual,
+      .system-visual {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .panel,
+      .photo,
+      .note,
+      .formula,
+      .step,
+      .metric,
+      .warning,
+      .visual-card,
+      .route-card,
+      .story-copy,
+      .story-scene,
+      .decision,
+      .loss-card,
+      .pon-card,
+      .pon-tree {
+        min-width: 0;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: normal;
+      }
+
+      .node:not(:last-child)::after {
+        content: "v";
+        right: 50%;
+        top: auto;
+        bottom: -17px;
+        transform: translateX(50%);
+      }
+
+      .transcript {
+        columns: 1;
+      }
+
+      .device:not(:last-child)::after {
+        content: "";
+        right: auto;
+        left: 28px;
+        top: auto;
+        bottom: -14px;
+        width: 3px;
+        height: 28px;
+        border-top: 0;
+        border-left: 3px solid #6aa4e8;
+        background: transparent;
+      }
+
+      .water-row {
+        grid-template-columns: 70px minmax(0, 1fr);
+        gap: 6px;
+        font-size: 0.78rem;
+      }
+
+      .water-row b {
+        grid-column: 1 / -1;
+        justify-self: start;
+      }
+
+      .receipt-row {
+        grid-template-columns: 1fr;
+        gap: 2px;
+      }
+
+      .route-path {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .gauge-track {
+        margin: 28px 14px 34px;
+      }
+
+      .gauge-marker::after {
+        min-width: 52px;
+        font-size: 0.7rem;
+      }
+
+      .gauge-band,
+      .gauge-scale {
+        font-size: 0.7rem;
+      }
+
+      .loss-card b {
+        display: block;
+      }
+
+      .loss-card b span {
+        display: block;
+        margin-top: 4px;
+      }
+
+      .split-box::after {
+        left: 18px;
+        right: auto;
+      }
+
+      .budget-token:not(:last-child)::after {
+        content: "v";
+        right: auto;
+        left: 18px;
+        top: auto;
+        bottom: -16px;
+      }
+
+      .pon-tree {
+        grid-template-columns: 1fr;
+      }
+
+      .customer-dots {
+        grid-template-columns: repeat(8, minmax(8px, 1fr));
+      }
+
+      .home-visual {
+        min-height: 440px;
+      }
+
+      .office-tower {
+        left: 22px;
+      }
+
+      .home-box {
+        right: 22px;
+      }
+
+      .street-cabinet {
+        left: 50%;
+      }
+
+      .fiber-line {
+        left: 96px;
+        right: 112px;
+      }
+
+      .fiber-loss.one {
+        left: 20%;
+      }
+
+      .fiber-loss.two {
+        left: 45%;
+      }
+
+      .fiber-loss.three {
+        right: 17%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>GPON / FTTH Optical Link Budget Notes</h1>
+      <p class="subhead">
+        Cleaned OCR and interpretation from the two whiteboard photos. The board is about how an ISP fiber path is planned from OLT to splitters to ONT/CPE, and how every fiber segment, splice, connector, bend, patch cord, and splitter reduces received optical power.
+      </p>
+      <div class="key-points" aria-label="Main ideas">
+        <div class="metric">
+          <span class="pill">Unit rule</span>
+          <strong>dBm is power. dB is loss.</strong>
+          <span>Losses are subtracted from launch power to estimate customer receive power.</span>
+        </div>
+        <div class="metric">
+          <span class="pill">Board range</span>
+          <strong>ONT Rx target: about -8 to -25 dBm</strong>
+          <span>The board marks values below this, such as -31 dBm, as out of range.</span>
+        </div>
+        <div class="metric">
+          <span class="pill">Splitter rule</span>
+          <strong>1:2 = 3 dB, 1:4 = 6 dB, 1:8 = 9 dB, 1:16 = 12 dB</strong>
+          <span>These are simplified planning values from the board.</span>
+        </div>
+        <div class="metric">
+          <span class="pill">Planning data</span>
+          <strong>Location + splitter config + JC box</strong>
+          <span>The system should compute expected Rx power at each customer location.</span>
+        </div>
+      </div>
+    </header>
+
+    <section>
+      <div class="story-hero">
+        <div class="story-copy">
+          <span class="pill">Story version</span>
+          <h2>Imagine one customer just asked for fiber internet.</h2>
+          <p>
+            The ISP already has internet at its office equipment. The question is whether enough optical power can travel from that office, through splitters and fiber joints, and still reach the customer modem.
+          </p>
+          <p>
+            Think of the whiteboard as the engineer checking that journey before connecting the customer. If the final number is inside the ONT range, the connection is healthy. If it falls too low, the route needs fewer splits, cleaner joints, or a different design.
+          </p>
+          <div class="story-strip">
+            <div class="story-chip">
+              <b>Start</b>
+              <span>OLT sends light into the fiber network.</span>
+            </div>
+            <div class="story-chip">
+              <b>Middle</b>
+              <span>Splitters and joints take small or large cuts from that light.</span>
+            </div>
+            <div class="story-chip">
+              <b>Finish</b>
+              <span>ONT checks whether the remaining light is usable.</span>
+            </div>
+          </div>
+        </div>
+        <div class="home-visual" aria-label="Fiber journey from ISP office to customer home">
+          <span class="sky-label">fiber light travels across the route</span>
+          <span class="ground-label">ISP side to customer premises</span>
+          <div class="office-tower"></div>
+          <div class="fiber-line"></div>
+          <div class="fiber-loss one">splice</div>
+          <div class="fiber-loss two">1x8</div>
+          <div class="fiber-loss three">patch</div>
+          <div class="street-cabinet"></div>
+          <div class="home-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>The Journey Of One Light Signal</h2>
+      <div class="story-track" aria-label="Six scene fiber journey">
+        <div class="story-scene" data-step="1">
+          <div class="scene-art"><span class="beam"></span></div>
+          <b>The OLT starts strong</b>
+          <p>The board uses roughly +5 to +7 dBm as the starting transmit power.</p>
+        </div>
+        <div class="story-scene" data-step="2">
+          <div class="scene-art loss-art"><span class="beam"></span></div>
+          <b>Fiber distance takes a little</b>
+          <p>Longer fiber adds attenuation. The board notes 800 m as about 1 to 2 dB.</p>
+        </div>
+        <div class="story-scene" data-step="3">
+          <div class="scene-art split-art"><span class="beam"></span></div>
+          <b>Splitters take a lot</b>
+          <p>A 1x8 splitter is easy to deploy, but it costs about 9 dB each time.</p>
+        </div>
+        <div class="story-scene" data-step="4">
+          <div class="scene-art loss-art"><span class="beam"></span></div>
+          <b>Joints add field loss</b>
+          <p>Splices, JC boxes, bends, patch cords, and dirty connectors all reduce power.</p>
+        </div>
+        <div class="story-scene" data-step="5">
+          <div class="scene-art"><span class="beam"></span></div>
+          <b>The ONT receives what remains</b>
+          <p>The customer modem does not care where the loss happened, only the final dBm.</p>
+        </div>
+        <div class="story-scene" data-step="6">
+          <div class="scene-art bad-art"><span class="beam"></span></div>
+          <b>Too weak becomes OOR</b>
+          <p>The board marks -31 dBm as out of range because it is weaker than about -25 dBm.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Good Route vs Failing Route</h2>
+      <div class="route-compare">
+        <div class="route-card good">
+          <span class="pill">Healthy design</span>
+          <h3>Enough light reaches the customer</h3>
+          <div class="route-path" aria-label="Healthy route">
+            <div class="route-hop">OLT<br>+5</div>
+            <div class="route-hop">1x8<br>-9</div>
+            <div class="route-hop">fiber<br>-2</div>
+            <div class="route-hop">field<br>-4</div>
+            <div class="route-hop">ONT<br>-10</div>
+          </div>
+          <p>
+            This simplified route keeps the ONT inside the usable window. The exact value is less important than the habit: add every loss and compare the final power.
+          </p>
+          <div class="receipt">
+            <div class="receipt-row"><span>OLT starts</span><b>+5 dBm</b></div>
+            <div class="receipt-row"><span>Total planned loss</span><b>-15 dB</b></div>
+            <div class="receipt-row"><span>Expected ONT receive</span><b class="ok">-10 dBm</b></div>
+          </div>
+        </div>
+        <div class="route-card bad">
+          <span class="pill">Failing design</span>
+          <h3>Too many splits make the light too weak</h3>
+          <div class="route-path" aria-label="Failing route">
+            <div class="route-hop">OLT<br>+5</div>
+            <div class="route-hop">1x8<br>-9</div>
+            <div class="route-hop">1x8<br>-9</div>
+            <div class="route-hop">1x4<br>-6</div>
+            <div class="route-hop">ONT<br>-31</div>
+          </div>
+          <p>
+            This is the whiteboard story. Multiple splitters plus patch and field loss push the customer side below the ONT receive range.
+          </p>
+          <div class="receipt">
+            <div class="receipt-row"><span>OLT starts</span><b>+5 dBm</b></div>
+            <div class="receipt-row"><span>Splitter chain and field loss</span><b>-36 dB</b></div>
+            <div class="receipt-row"><span>Expected ONT receive</span><b class="loss">-31 dBm</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How To Read Any Future Whiteboard Like This</h2>
+      <div class="decision-strip">
+        <div class="decision">
+          <span>1</span>
+          <b>Find the start power</b>
+          <p>Look for OLT Tx power, usually written in dBm.</p>
+        </div>
+        <div class="decision">
+          <span>2</span>
+          <b>List every loss</b>
+          <p>Fiber, splitters, splices, JC boxes, patch cords, and bends are all in dB.</p>
+        </div>
+        <div class="decision">
+          <span>3</span>
+          <b>Subtract losses</b>
+          <p>Start dBm minus total dB loss gives expected customer Rx power.</p>
+        </div>
+        <div class="decision">
+          <span>4</span>
+          <b>Compare with ONT range</b>
+          <p>If it is below the lower limit, redesign the route or fix field loss.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Imported Whiteboard Photos</h2>
+      <div class="grid two">
+        <figure class="photo">
+          <img src="whiteboard_1.jpg" alt="Whiteboard photo 1 showing GPON loss notes, splitters, PON ports, and ONT receive power range">
+          <figcaption class="caption">Source image: whiteboard_1.jpg</figcaption>
+        </figure>
+        <figure class="photo">
+          <img src="whiteboard_2.jpg" alt="Whiteboard photo 2 showing an OLT to splitter to ONT chain and expected customer receive power notes">
+          <figcaption class="caption">Source image: whiteboard_2.jpg</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>Start Here: What The Boxes Mean</h2>
+      <div class="visual-card">
+        <div class="visual-title">
+          <h3>Internet over fiber, in plain terms</h3>
+          <p>The signal is light. The job is to keep enough light reaching the customer modem.</p>
+        </div>
+        <div class="device-map" aria-label="Beginner GPON visual map">
+          <div class="device">
+            <div class="device-symbol">OLT</div>
+            <b>Operator equipment</b>
+            <p>This is the starting point at the ISP side. It sends the optical signal into the fiber network.</p>
+          </div>
+          <div class="device">
+            <div class="device-symbol">1x8</div>
+            <b>Splitter</b>
+            <p>This divides one fiber signal into many customer paths. More splits mean more loss.</p>
+          </div>
+          <div class="device">
+            <div class="device-symbol">JC</div>
+            <b>Junction / patch point</b>
+            <p>Fiber joins, patch cords, bends, and connectors sit here. Each can add small loss.</p>
+          </div>
+          <div class="device">
+            <div class="device-symbol">ONT</div>
+            <b>Customer modem</b>
+            <p>This receives the light and turns it into home internet. It needs power in the safe range.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>The Core Idea Visually</h2>
+      <div class="power-visuals">
+        <div class="visual-card">
+          <div class="visual-title">
+            <h3>Receive power gauge</h3>
+            <p>For this board, green is roughly -25 to -8 dBm.</p>
+          </div>
+          <div class="gauge-track" aria-label="ONT receive power gauge from weak to strong">
+            <div class="gauge-band">usable ONT range</div>
+            <div class="gauge-marker marker-low" data-label="-31 OOR"></div>
+            <div class="gauge-marker marker-min" data-label="-25 min"></div>
+            <div class="gauge-marker marker-max" data-label="-8 max"></div>
+          </div>
+          <div class="gauge-scale">
+            <span>too weak</span>
+            <span>good range</span>
+            <span>too strong</span>
+          </div>
+        </div>
+
+        <div class="visual-card">
+          <div class="visual-title">
+            <h3>How the signal gets weaker</h3>
+            <p>Each row subtracts from the starting light level.</p>
+          </div>
+          <div class="waterfall" aria-label="Power loss waterfall example">
+            <div class="water-row">
+              <span>Start OLT</span>
+              <span class="water-bar"><span class="water-fill" style="width: 96%;"></span></span>
+              <b>+5 dBm</b>
+            </div>
+            <div class="water-row loss-row">
+              <span>1x8 split</span>
+              <span class="water-bar"><span class="water-fill" style="width: 72%;"></span></span>
+              <b>-4 dBm</b>
+            </div>
+            <div class="water-row loss-row">
+              <span>1x8 split</span>
+              <span class="water-bar"><span class="water-fill" style="width: 48%;"></span></span>
+              <b>-13 dBm</b>
+            </div>
+            <div class="water-row loss-row">
+              <span>1x4 split</span>
+              <span class="water-bar"><span class="water-fill" style="width: 32%;"></span></span>
+              <b>-19 dBm</b>
+            </div>
+            <div class="water-row final-row">
+              <span>1x8 + patch</span>
+              <span class="water-bar"><span class="water-fill" style="width: 12%;"></span></span>
+              <b>-31 dBm</b>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>What A Splitter Does</h2>
+      <div class="splitter-demo">
+        <div class="split-box" aria-label="1x8 splitter fan out">
+          <div class="split-center">1x8</div>
+          <div class="branches">
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+            <div class="branch"></div>
+          </div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-card">
+            <b>Why 1x8 costs about 9 dB</b>
+            <p>The light is divided across 8 outputs. Each customer gets only a fraction of the original optical power.</p>
+          </div>
+          <div class="mini-card">
+            <b>Why too many splitters fail</b>
+            <p>If you split again and again, the customer-side light becomes too weak for the ONT to read reliably.</p>
+          </div>
+          <div class="mini-card">
+            <b>What dB means here</b>
+            <p>dB is the amount subtracted by a component, like a splitter, splice, connector, or fiber bend.</p>
+          </div>
+          <div class="mini-card">
+            <b>What dBm means here</b>
+            <p>dBm is the actual optical power level measured at a point, such as the ONT receive port.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Raw OCR Transcript</h2>
+      <div class="panel">
+        <ul class="transcript">
+          <li>Tx power: approximately +5 to +7 dBm.</li>
+          <li>800 m fiber run: noted as about 1 to 2 dB of path loss.</li>
+          <li>Wire break / fusion splice: about 0.1 to 0.3 dB loss.</li>
+          <li>Wire bend / JC box: extra loss; one note marks about 1 dB loss.</li>
+          <li>Patch cord: example shows -16 dBm becoming -19 dBm after about 3 dB loss.</li>
+          <li>Splitter losses: 1x2 = 3 dB, 1x4 = 6 dB, 1x8 = 9 dB, 1x16 = 12 dB.</li>
+          <li>PON ports: 1 PON can be planned up to 128 ONTs/customers; notes also list 2, 4, and 8 PON ports.</li>
+          <li>Customer side: CPE / ONT / NetBox; Rx power is measured in dBm.</li>
+          <li>Acceptable receive-power window on board: about -8 to -25 dBm.</li>
+          <li>Example chain: OLT -> 1x8 -> 1x8 -> 1x4 -> 1x8 -> ONT.</li>
+          <li>Example chain losses: -9, -9, -6, -9 dB, plus extra JC/patch/fiber loss.</li>
+          <li>Example output: about -31 dBm, marked OOR, meaning out of range.</li>
+          <li>System fields: lat/long, splitter config, JC box, CSP office, customer premises.</li>
+          <li>System output: expected Rx power at customer location.</li>
+          <li>Loss inputs: optical fiber attenuation, splitter loss, JC loss.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Network Model From The Board</h2>
+      <div class="panel">
+        <p>
+          A GPON/FTTH path starts at the OLT in the operator network, passes through feeder fiber, junction/JC boxes, splitters, distribution fiber, patch cords, and finally reaches the ONT at the customer premises. Every passive element adds loss. The ONT only works reliably if the final received optical power stays inside its supported range.
+        </p>
+        <div class="flow" aria-label="GPON path">
+          <div class="node">
+            <b>OLT</b>
+            <small>Launches optical signal, example Tx about +5 to +7 dBm.</small>
+          </div>
+          <div class="node">
+            <b>Feeder fiber</b>
+            <small>Fiber attenuation plus splices and bends.</small>
+          </div>
+          <div class="node">
+            <b>Splitter chain</b>
+            <small>1:2, 1:4, 1:8, 1:16 split ratios add large loss.</small>
+          </div>
+          <div class="node">
+            <b>JC / patch</b>
+            <small>Connectors, patch cords, junction boxes, and bad bends add margin loss.</small>
+          </div>
+          <div class="node">
+            <b>ONT / CPE</b>
+            <small>Expected Rx should land around -8 to -25 dBm in the board notes.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Correct Link-Budget Math</h2>
+      <div class="formula">
+        ONT Rx power (dBm) = OLT Tx power (dBm) - fiber loss (dB) - splice loss (dB) - splitter loss (dB) - connector / patch / bend loss (dB)
+      </div>
+      <div class="budget-machine" aria-label="Visual link budget calculator">
+        <div class="budget-token">
+          <b>Start</b>
+          <strong>+5 dBm</strong>
+          <span>OLT transmit power</span>
+        </div>
+        <div class="budget-token">
+          <b>Fiber</b>
+          <strong>1-2 dB</strong>
+          <span>Distance attenuation</span>
+        </div>
+        <div class="budget-token">
+          <b>Splitter</b>
+          <strong>9 dB</strong>
+          <span>Example 1x8 split</span>
+        </div>
+        <div class="budget-token">
+          <b>Joints</b>
+          <strong>0.1-1 dB</strong>
+          <span>Splice, JC, bend</span>
+        </div>
+        <div class="budget-token">
+          <b>Patch</b>
+          <strong>1-3 dB</strong>
+          <span>Connector or patch cord</span>
+        </div>
+        <div class="budget-token final">
+          <b>Finish</b>
+          <strong>Rx dBm</strong>
+          <span>Compare with ONT range</span>
+        </div>
+      </div>
+      <div class="grid two" style="margin-top: 16px;">
+        <div class="note">
+          <h3>Important correction</h3>
+          <p>
+            The board sometimes writes losses as dBm. Strictly, loss is measured in dB, while the measured optical signal level is dBm. Example: a 1x8 splitter has about 9 dB loss; after that loss, the signal might measure -16 dBm or -19 dBm.
+          </p>
+        </div>
+        <div class="warning">
+          <h3>What out of range means</h3>
+          <p>
+            If the expected customer Rx power is weaker than the ONT sensitivity limit, the ONT may fail registration, flap, or work unreliably. The board marks about -31 dBm as OOR because it is below the noted -25 dBm lower limit.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Loss Reference Table</h2>
+      <div class="loss-ladder" aria-label="Splitter loss ladder visual">
+        <div class="loss-card">
+          <b>1x2 <span>3 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 25%;"></span></div>
+          <p>Smallest split shown on the board.</p>
+        </div>
+        <div class="loss-card">
+          <b>1x4 <span>6 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 50%;"></span></div>
+          <p>Twice the number of customer branches.</p>
+        </div>
+        <div class="loss-card">
+          <b>1x8 <span>9 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 75%;"></span></div>
+          <p>Common in the board examples.</p>
+        </div>
+        <div class="loss-card">
+          <b>1x16 <span>12 dB</span></b>
+          <div class="loss-meter"><span class="loss-column" style="height: 100%;"></span></div>
+          <p>Largest simple splitter value listed.</p>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Whiteboard value</th>
+            <th>Meaning in planning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OLT Tx power</td>
+            <td>+5 to +7 dBm</td>
+            <td>Starting optical power before outside-plant losses.</td>
+          </tr>
+          <tr>
+            <td>800 m fiber run</td>
+            <td>1 to 2 dB noted</td>
+            <td>Fiber attenuation plus practical connector/splice margin. Pure fiber loss is usually lower, but field planning often carries margin.</td>
+          </tr>
+          <tr>
+            <td>Fusion splice / wire break repair</td>
+            <td>0.1 to 0.3 dB</td>
+            <td>Small loss for a good splice; bad splice or dirty connector can be worse.</td>
+          </tr>
+          <tr>
+            <td>Wire bend / JC box</td>
+            <td>About 1 dB noted</td>
+            <td>Extra loss caused by tight bends, joints, and connector handling.</td>
+          </tr>
+          <tr>
+            <td>Patch cord</td>
+            <td>Example 3 dB drop</td>
+            <td>A patch cord or connector problem can noticeably reduce Rx power.</td>
+          </tr>
+          <tr>
+            <td>1x2 splitter</td>
+            <td>3 dB</td>
+            <td>Signal is split into 2 outputs.</td>
+          </tr>
+          <tr>
+            <td>1x4 splitter</td>
+            <td>6 dB</td>
+            <td>Signal is split into 4 outputs.</td>
+          </tr>
+          <tr>
+            <td>1x8 splitter</td>
+            <td>9 dB</td>
+            <td>Signal is split into 8 outputs.</td>
+          </tr>
+          <tr>
+            <td>1x16 splitter</td>
+            <td>12 dB</td>
+            <td>Signal is split into 16 outputs.</td>
+          </tr>
+          <tr>
+            <td>ONT / CPE Rx window</td>
+            <td>-8 to -25 dBm</td>
+            <td>Expected receive power should stay inside this operating window.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pon-visual">
+        <div class="pon-card">
+          <h3>PON capacity is not the same as power budget</h3>
+          <p>
+            The board notes that one PON can be planned for up to 128 ONTs/customers. That does not mean every splitter chain is automatically healthy. You still need enough received power at each ONT.
+          </p>
+          <p class="pon-callout">
+            Capacity asks: how many customers can be attached? Link budget asks: will each customer's light level still work?
+          </p>
+        </div>
+        <div class="pon-tree" aria-label="One PON fan-out capacity visual">
+          <div class="pon-root">1 PON<br>port</div>
+          <div class="customer-dots" aria-label="128 customer dots represented visually">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Worked Example From The Board</h2>
+      <div class="example">
+        <div class="panel">
+          <p>
+            The board draws a chain with multiple splitters in series:
+          </p>
+          <div class="flow example-flow">
+            <div class="node"><b>OLT</b><small>Tx starts here</small></div>
+            <div class="node"><b>1x8</b><small class="loss">-9 dB</small></div>
+            <div class="node"><b>1x8</b><small class="loss">-9 dB</small></div>
+            <div class="node"><b>1x4</b><small class="loss">-6 dB</small></div>
+            <div class="node"><b>1x8 + ONT</b><small class="loss">-9 dB</small></div>
+          </div>
+        </div>
+        <div>
+          <div class="step">
+            <h3>1. Add splitter loss</h3>
+            <p><span class="loss">9 + 9 + 6 + 9 = 33 dB</span> splitter loss before fiber, JC, patch, and connector margin.</p>
+          </div>
+          <div class="step">
+            <h3>2. Add field loss</h3>
+            <p>The board also notes JC/patch/fiber losses, including a sample extra <span class="loss">3 dB</span> drop.</p>
+          </div>
+          <div class="step">
+            <h3>3. Compare against ONT range</h3>
+            <p>With a +5 dBm launch, +5 - 33 - 3 = <span class="loss">-31 dBm</span>, which is weaker than -25 dBm and therefore <span class="loss">OOR</span>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>System Design Implied By The Board</h2>
+      <div class="system-visual" aria-label="System input to output visual">
+        <div class="system-stack">
+          <div class="system-pill">
+            <b>Location</b>
+            <span>Customer lat/long and CSP office</span>
+          </div>
+          <div class="system-pill">
+            <b>Route</b>
+            <span>Fiber length, JC box, patch points</span>
+          </div>
+          <div class="system-pill">
+            <b>Splitter config</b>
+            <span>1x2, 1x4, 1x8, 1x16 chain</span>
+          </div>
+        </div>
+        <div class="engine-core">
+          Link budget<br>calculator
+        </div>
+        <div class="output-card">
+          <span class="pill">Output</span>
+          <strong>Expected Rx power</strong>
+          <p>Customer ONT status: pass, warning, or out of range.</p>
+          <div class="status-bars">
+            <div class="status-bar"><span>pass</span><span class="status-line pass"><span></span></span></div>
+            <div class="status-bar"><span>warning</span><span class="status-line warn"><span></span></span></div>
+            <div class="status-bar"><span>OOR</span><span class="status-line fail"><span></span></span></div>
+          </div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Input / field</th>
+            <th>Why it matters</th>
+            <th>Output it supports</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Customer latitude and longitude</td>
+            <td>Calculates route distance from CSP office, splitter, and JC box.</td>
+            <td>Fiber length and expected attenuation.</td>
+          </tr>
+          <tr>
+            <td>Splitter configuration</td>
+            <td>Identifies all split ratios in the customer path.</td>
+            <td>Total splitter loss.</td>
+          </tr>
+          <tr>
+            <td>JC box / junction data</td>
+            <td>Captures splices, connector points, bends, and patching losses.</td>
+            <td>Practical field margin.</td>
+          </tr>
+          <tr>
+            <td>CSP office and customer premises</td>
+            <td>Defines the end-to-end optical route.</td>
+            <td>Expected Rx power at the customer ONT.</td>
+          </tr>
+          <tr>
+            <td>Measured ONT Rx power</td>
+            <td>Validates whether the predicted design matches field reality.</td>
+            <td>Pass, warning, or out-of-range status.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Operational Takeaways</h2>
+      <div class="grid three">
+        <div class="panel">
+          <div class="takeaway-art split-budget"></div>
+          <h3>Keep the split budget realistic</h3>
+          <p>Stacking too many splitters quickly exhausts the optical budget. A 1x8 + 1x8 + 1x4 + 1x8 chain is already about 33 dB before any outside-plant loss.</p>
+        </div>
+        <div class="panel">
+          <div class="takeaway-art measure-power"></div>
+          <h3>Measure customer Rx power</h3>
+          <p>The practical acceptance check is the ONT receive power at the customer location. The board's target window is about -8 to -25 dBm.</p>
+        </div>
+        <div class="panel">
+          <div class="takeaway-art loss-stack">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <h3>Track small losses</h3>
+          <p>Splices, patch cords, tight bends, dirty connectors, and JC boxes look small individually, but together can push a borderline customer out of range.</p>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer">
+      OCR note: this page is reconstructed from the visible handwriting. Very faint or partially cropped marks were interpreted using standard GPON/FTTH link-budget theory.
+    </p>
+  </main>
+</body>
+</html>
