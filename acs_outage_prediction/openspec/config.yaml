@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Domain: exploratory localization and later prediction of router/customer outages.
+  Customer source: only PROD_DB.DBT.ACTIVE_BASE rows where SOURCE = 'CUSTOMER_V2'.
+  Outage sources: the existing spatial pilot uses Snowflake incident/impacted-device tables; the H3 map derives a separate strict ping-defined telemetry-outage target from PUBLIC.HOURLY_DEVICE_PING_INFLUX. These labels must not be conflated.
+  Mapping source: T_DEVICE provides the audited DEVICE_ID to unique NASID bridge.
+  Current evidence: a seven-day audit mapped 63,431 unique outage devices to eligible CUSTOMER_V2 NASIDs (93.2% coverage).
+  ACS source: MySQL acs_raw_dump is deferred until the geographic outage pilot succeeds.
+  Optical source: Snowflake HOURLY_DEVICE_PING_INFLUX and derived optical tables exist outside acs_raw_dump; they require a separately locked device-level feasibility change.
+  Privacy: never export mobile numbers, IPs, SSIDs, raw identifiers, or full parameter payloads.
+  Scientific constraint: current customer locations cannot establish historical membership before LOCATION_START_TIME.
+  Implementation style: minimum standard-library-first code with one runnable integration check.
+
+rules:
+  proposal:
+    - State the customer denominator and identifier-mapping gates with stop conditions.
+    - Include explicit non-goals.
+  specs:
+    - Require density-normalized cell-hour outage measures and chronological validation.
+    - Prohibit PII, ambiguous joins, and post-outage feature leakage.
+    - Scope ACS source nulls to acs_raw_dump and keep non-ACS optical telemetry in a separate prospective analysis.
+    - Keep formal incidents and ping-defined telemetry outages as separately named outcomes.
+  tasks:
+    - Put CUSTOMER_V2 cohort and mapping checks before cell-hour construction.
+    - Keep ACS and predictive modeling conditional on a successful geographic pilot.
+
+operations:
+  apply:
+    guidance:
+      - Stop after the mapping audit if no validated join path exists.

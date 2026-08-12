@@ -1,1 +1,5 @@
 .env
+__pycache__/
+*.pyc
+**/.ocsp_cache.json
+acs_outage_prediction/outputs/

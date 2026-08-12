@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Operational outage trigger, severity, and cause-attribution model.">
+  <title>Outage severity model</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7faf8;
+      --panel: #ffffff;
+      --panel-2: #f0f7f3;
+      --line: #d8e4de;
+      --text: #12231d;
+      --muted: #61736b;
+      --green: #087a46;
+      --yellow: #a46300;
+      --orange: #c44d12;
+      --red: #c5314d;
+      --blue: #1769aa;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 85% 0%, #cfeadd88, transparent 30rem),
+        radial-gradient(circle at 0% 35%, #e3f2ea88, transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: inherit; }
+    .wrap { width: min(1180px, calc(100% - 40px)); margin: auto; }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    .muted { color: var(--muted); }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 72px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; text-decoration: none; }
+    .brand-mark { width: 13px; height: 13px; border-radius: 4px; background: var(--green); box-shadow: 0 0 20px #087a4644; }
+    .nav-links { display: flex; gap: 22px; color: var(--muted); }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover { color: var(--text); }
+
+    header { padding: 92px 0 60px; }
+    h1 { max-width: 850px; margin: 12px 0 18px; font-size: clamp(46px, 7vw, 84px); line-height: .98; letter-spacing: -.055em; }
+    .lede { max-width: 720px; margin: 0; color: var(--muted); font-size: clamp(18px, 2vw, 22px); }
+    .hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 50px; }
+    .stat { min-height: 128px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: #ffffffcc; box-shadow: 0 8px 24px #183b2d0a; }
+    .stat strong { display: block; margin-bottom: 8px; font-size: 32px; line-height: 1; }
+    .stat:nth-child(1) strong { color: var(--yellow); }
+    .stat:nth-child(2) strong { color: var(--orange); }
+    .stat:nth-child(3) strong { color: var(--green); }
+
+    section { padding: 62px 0; border-top: 1px solid var(--line); }
+    .section-head { display: grid; grid-template-columns: .65fr 1.35fr; gap: 40px; margin-bottom: 30px; }
+    h2 { margin: 5px 0 0; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; letter-spacing: -.035em; }
+    .section-head p { max-width: 680px; margin: 2px 0 0; color: var(--muted); font-size: 18px; }
+
+    .timeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .step { position: relative; min-height: 190px; padding: 22px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .step::after { position: absolute; right: -8px; bottom: -28px; color: #087a4608; font-size: 100px; font-weight: 900; content: attr(data-step); }
+    .step b { display: block; margin-bottom: 18px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+    .step strong { display: block; margin-bottom: 8px; font-size: 21px; }
+    .candidate b, .candidate strong { color: var(--yellow); }
+    .confirmed b, .confirmed strong { color: var(--orange); }
+    .incident b, .incident strong { color: var(--red); }
+    .recovered b, .recovered strong { color: var(--green); }
+
+    .grains { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+    .grain { padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .grain code { display: inline-block; margin: 12px 0 18px; padding: 5px 8px; border-radius: 6px; background: #e8f2ed; color: var(--green); }
+    .grain h3, .meaning h3 { margin: 0; font-size: 21px; }
+    .grain p, .meaning p { margin-bottom: 0; color: var(--muted); }
+    .arrow { color: var(--green); }
+
+    .meanings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .meaning { padding: 26px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, var(--panel-2), var(--panel)); }
+    .meaning .number { display: block; margin-bottom: 32px; color: var(--muted); font: 700 12px ui-monospace, monospace; }
+    .meaning:nth-child(1) h3 { color: var(--red); }
+    .meaning:nth-child(2) h3 { color: var(--blue); }
+    .meaning:nth-child(3) h3 { color: var(--green); }
+
+    .formula { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 16px; align-items: center; padding: 30px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); text-align: center; }
+    .formula strong { display: block; font-size: 20px; }
+    .formula span { color: var(--muted); }
+    .formula .operator { color: var(--green); font-size: 28px; }
+    .warning { margin-top: 12px; padding: 16px 20px; border-left: 3px solid var(--yellow); border-radius: 4px var(--radius) var(--radius) 4px; background: #fff7e6; color: #704600; }
+
+    .tree-scroll { overflow-x: auto; padding: 4px 4px 18px; }
+    .tree { min-width: 1100px; padding: 30px; border: 1px solid var(--line); border-radius: var(--radius); background: #f3f8f5; }
+    .tree-node { width: min(100%, 330px); margin: auto; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); text-align: center; }
+    .tree-node.decision { border-color: #1769aa66; font-size: 17px; font-weight: 750; box-shadow: 0 6px 18px #1769aa0b; }
+    .tree-node.result { min-height: 112px; border-color: #087a4655; }
+    .tree-node.result strong { display: block; color: var(--green); font-size: 17px; letter-spacing: .04em; }
+    .tree-node.result small { display: block; margin-top: 7px; color: var(--muted); font-size: 13px; }
+    .tree-node.noise { border-color: #c5314d55; }
+    .tree-node.noise strong { color: var(--red); }
+    .tree-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 22px; }
+    .tree-split.root { grid-template-columns: 1fr 4fr; }
+    .tree-branch { position: relative; padding-top: 34px; border-top: 1px solid var(--line); }
+    .tree-branch::before { position: absolute; top: 0; left: 50%; width: 1px; height: 27px; background: var(--line); content: ""; }
+    .branch-label { position: absolute; top: 5px; left: calc(50% + 8px); color: var(--green); font: 800 11px ui-monospace, monospace; letter-spacing: .08em; }
+    .branch-label.no { color: var(--red); }
+    .tree-note { margin: 20px 0 0; padding: 14px 18px; border-left: 3px solid var(--yellow); background: #fff7e6; color: #704600; }
+
+    .record { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    pre { margin: 0; padding: 24px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: #f3f8f5; color: #294b3e; font: 13px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .rules { display: grid; gap: 12px; }
+    .rule { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    .rule strong { color: var(--green); }
+
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .compare { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .compare h3 { margin: 0 0 18px; font-size: 22px; }
+    .compare ul { margin: 0; padding-left: 19px; color: var(--muted); }
+    .compare li + li { margin-top: 8px; }
+    .compare.old h3 { color: var(--muted); }
+    .compare.new { border-color: #087a4655; background: linear-gradient(145deg, #edf8f2, var(--panel)); }
+    .compare.new h3 { color: var(--green); }
+
+    .target { display: flex; justify-content: space-between; gap: 30px; align-items: center; padding: 34px; border: 1px solid #087a4655; border-radius: var(--radius); background: #eaf7f0; }
+    .target strong { color: var(--green); font-size: 48px; line-height: 1; }
+    .target p { max-width: 720px; margin: 0; color: var(--muted); font-size: 17px; }
+    footer { padding: 34px 0 54px; color: var(--muted); font-size: 13px; }
+
+    @media (max-width: 900px) {
+      .hero-stats, .timeline, .grains { grid-template-columns: repeat(2, 1fr); }
+      .meanings { grid-template-columns: 1fr; }
+      .section-head, .record { grid-template-columns: 1fr; }
+      .formula { grid-template-columns: 1fr; text-align: left; }
+      .formula .operator { transform: rotate(90deg); justify-self: center; }
+    }
+    @media (max-width: 580px) {
+      .wrap { width: min(100% - 24px, 1180px); }
+      .nav-links a:first-child { display: none; }
+      header { padding-top: 64px; }
+      .hero-stats, .timeline, .grains, .comparison { grid-template-columns: 1fr; }
+      .target { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav aria-label="Primary navigation">
+      <a class="brand" href="severity.html"><span class="brand-mark" aria-hidden="true"></span>Outage Intelligence</a>
+      <div class="nav-links">
+        <a href="index.html">H3 map</a>
+        <a href="https://www.figma.com/board/amY5LW3x5vGuzu2gO6TPSq/Outage-Cause-Attribution-Tree?node-id=0-1&amp;p=fseverity">Source board ↗</a>
+      </div>
+    </nav>
+
+    <header>
+      <span class="eyebrow">Operational severity model · v0.1</span>
+      <h1>Detect early.<br>Confirm carefully.</h1>
+      <p class="lede">H3 is an aggregation lens, not the outage. Detect silence per device, find the shared pattern, then assign one outage ID with separate severity, cause, and confidence.</p>
+      <div class="hero-stats" aria-label="Model targets">
+        <div class="stat"><strong>15 min</strong><span class="muted">Candidate signal</span></div>
+        <div class="stat"><strong>30 min</strong><span class="muted">Confirmed silence</span></div>
+        <div class="stat"><strong>≥80%</strong><span class="muted">Known-outage recall target</span></div>
+        <div class="stat"><strong>↓ false</strong><span class="muted">Promise optimization</span></div>
+      </div>
+    </header>
+
+    <main>
+      <section id="trigger">
+        <div class="section-head">
+          <div><span class="eyebrow">01 · Trigger</span><h2>Signal lifecycle</h2></div>
+          <p>Evaluate every five minutes. Silence starts as evidence—not an outage. It becomes an incident only when other devices form a matching operator and geographic pattern.</p>
+        </div>
+        <div class="timeline">
+          <article class="step" data-step="1"><b>Normal</b><strong>Healthy</strong><span class="muted">Recent CSP signal is present.</span></article>
+          <article class="step candidate" data-step="2"><b>15 minutes</b><strong>Candidate</strong><span class="muted">Watch and collect corroborating evidence.</span></article>
+          <article class="step confirmed" data-step="3"><b>30 minutes</b><strong>Confirmed signal</strong><span class="muted">Device silence can now join a cluster.</span></article>
+          <article class="step incident" data-step="4"><b>Shared pattern</b><strong>Attribute</strong><span class="muted">Match existing operator outage IDs across CSPs and H3s.</span></article>
+          <article class="step recovered" data-step="5"><b>Stable return</b><strong>Recovered</strong><span class="muted">Close after recovery remains stable.</span></article>
+        </div>
+      </section>
+
+      <section id="grains">
+        <div class="section-head">
+          <div><span class="eyebrow">02 · Verified source</span><h2>Minimal input, derived evidence</h2></div>
+          <p>One V3 table supplies the raw membership fact. Geography and eligible-device denominators come from historical inventory because affected counts alone cannot prove that a zone is down.</p>
+        </div>
+        <pre aria-label="Minimal source query">SELECT outage_id, device_id, csp_id, member_first_fail_at_ist
+FROM PROD_DB.BUSINESS_EFFICIENCY_ROUTER_OUTAGE_DETECTION_PUBLIC.OUTAGE_MEMBER_V3
+WHERE NOT COALESCE(_fivetran_deleted, FALSE);</pre>
+        <div class="warning"><strong>Verified:</strong> 1,027,868 active unique outage-device rows, zero missing key fields, and complete joins to 39,177 active source outages. TICK_LEDGER_V3 is not needed for v1.</div>
+        <div class="grains">
+          <article class="grain"><h3>Raw member</h3><code>outage_id, device_id</code><p>Preserve source identity and device membership.</p></article>
+          <article class="grain"><h3>Historical zone</h3><code>device_id → h3_id</code><p>Use the location valid when the member failed.</p></article>
+          <article class="grain"><h3>Denominator</h3><code>csp_id, h3_id</code><p>Count eligible active devices and comparison operators.</p></article>
+          <article class="grain"><h3>Derived state</h3><code>DOWN · UP · UNKNOWN</code><p>Apply validated affected-count and affected-share thresholds.</p></article>
+        </div>
+      </section>
+
+      <section id="meaning">
+        <div class="section-head">
+          <div><span class="eyebrow">03 · Meaning</span><h2>Never mix these fields</h2></div>
+          <p>A severe outage can still have an unknown cause. A likely cause can still have weak evidence. Keep all three dimensions explicit.</p>
+        </div>
+        <div class="meanings">
+          <article class="meaning"><span class="number">01 / IMPACT</span><h3>Severity</h3><p>How many customers are affected, what share they represent, and for how long.</p></article>
+          <article class="meaning"><span class="number">02 / DIAGNOSIS</span><h3>Cause</h3><p>The most likely failure domain: backend, power, fibre, OLT, ISP, or unknown.</p></article>
+          <article class="meaning"><span class="number">03 / EVIDENCE</span><h3>Confidence</h3><p>How reliable the detection and attribution are based on validation and corroboration.</p></article>
+        </div>
+      </section>
+
+      <section id="severity">
+        <div class="section-head">
+          <div><span class="eyebrow">04 · Raw severity</span><h2>Impact before buckets</h2></div>
+          <p>Store the raw dimensions first. Severity buckets are a presentation layer and should be derived only after historical validation.</p>
+        </div>
+        <div class="formula" aria-label="Raw severity inputs">
+          <div><strong>Device-minutes</strong><span>Sum of confirmed silent minutes</span></div>
+          <div class="operator" aria-hidden="true">+</div>
+          <div><strong>Scope</strong><span>Affected count, share, H3s, CSPs</span></div>
+          <div class="operator" aria-hidden="true">+</div>
+          <div><strong>Duration</strong><span>Incident start through stable recovery</span></div>
+        </div>
+        <div class="warning"><strong>Guardrail:</strong> v1 attribution uses affected scope. Add OUTAGE_V3.CLOSED_AT_IST only when duration-based severity is implemented.</div>
+      </section>
+
+      <section id="cause">
+        <div class="section-head">
+          <div><span class="eyebrow">05 · Attribution</span><h2>Outage Cause Attribution Tree</h2></div>
+          <p>Cross-operator and cross-zone comparisons classify the outage. Follow the branches in order and stop at the first matching result.</p>
+        </div>
+        <div class="tree-scroll" role="region" aria-label="Scrollable outage cause attribution tree" tabindex="0">
+          <div class="tree">
+            <div class="tree-node decision">Enough evidence?</div>
+            <div class="tree-split root">
+              <div class="tree-branch">
+                <span class="branch-label no">NO</span>
+                <div class="tree-node result noise"><strong>NOISE</strong></div>
+              </div>
+              <div class="tree-branch">
+                <span class="branch-label">YES</span>
+                <div class="tree-node decision">Multiple operators down<br>in the same zone?</div>
+                <div class="tree-split">
+                  <div class="tree-branch">
+                    <span class="branch-label">YES</span>
+                    <div class="tree-node decision">Are those operators also down<br>in their other zones?</div>
+                    <div class="tree-split">
+                      <div class="tree-branch">
+                        <span class="branch-label no">NO</span>
+                        <div class="tree-node result"><strong>AREA-SHARED</strong><small>Likely power or shared physical dependency</small></div>
+                      </div>
+                      <div class="tree-branch">
+                        <span class="branch-label">YES</span>
+                        <div class="tree-node result"><strong>REGIONAL</strong><small>Wide-area upstream or regional event</small></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tree-branch">
+                    <span class="branch-label no">NO</span>
+                    <div class="tree-node decision">Is the affected operator down<br>across all/almost all of its zones?</div>
+                    <div class="tree-split">
+                      <div class="tree-branch">
+                        <span class="branch-label">YES</span>
+                        <div class="tree-node result"><strong>ISP / OLT</strong><small>Operator-wide upstream / OLT failure</small></div>
+                      </div>
+                      <div class="tree-branch">
+                        <span class="branch-label no">NO</span>
+                        <div class="tree-node decision">Are neighboring operators<br>in this zone up?</div>
+                        <div class="tree-split">
+                          <div class="tree-branch">
+                            <span class="branch-label">YES</span>
+                            <div class="tree-node result"><strong>LOCAL OPERATOR FAULT</strong><small>Fiber cut, local switch, node power issue, etc.</small></div>
+                          </div>
+                          <div class="tree-branch">
+                            <span class="branch-label no">NO COMPARISON</span>
+                            <div class="tree-node result"><strong>UNKNOWN</strong><small>Single-zone operator or single-operator zone</small></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="tree-note"><strong>First matching rule wins.</strong> Any ambiguous pattern falls into UNKNOWN.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="record">
+        <div class="section-head">
+          <div><span class="eyebrow">06 · Output</span><h2>Preserve the source outage ID</h2></div>
+          <p>Every V3 outage ID belongs to exactly one CSP. Keep it as the published key; use a derived attribution event ID only to compare overlapping outages across operators and zones.</p>
+        </div>
+        <div class="record">
+          <pre aria-label="Minimum published output">outage_id
+bucket
+confidence</pre>
+          <div class="rules">
+            <div class="rule"><strong>Preserve</strong><br><span class="muted">Keep the V3 outage ID and CSP membership unchanged.</span></div>
+            <div class="rule"><strong>Explain</strong><br><span class="muted">Retain rule matched, H3, affected share, comparison count, and attribution event ID internally.</span></div>
+            <div class="rule"><strong>Protect</strong><br><span class="muted">Device IDs stay internal; published outputs remain aggregated.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="change">
+        <div class="section-head">
+          <div><span class="eyebrow">07 · Build plan</span><h2>Shortest path to bucketing</h2></div>
+          <p>Build only the evidence required by the tree. The existing strict H3 label and the proposed 15/30-minute operational trigger remain separately named outputs.</p>
+        </div>
+        <div class="comparison">
+          <article class="compare old"><h3>Prepare evidence</h3><ul><li>Extract four-column member fact</li><li>Attach historical H3</li><li>Build CSP-H3 eligible denominators</li><li>Aggregate affected count and share</li></ul></article>
+          <article class="compare new"><h3>Classify and publish</h3><ul><li>Mark DOWN, UP, or UNKNOWN</li><li>Match temporally overlapping outages</li><li>Apply the first matching tree rule</li><li>Emit outage ID, bucket, confidence</li></ul></article>
+        </div>
+        <div class="warning"><strong>Skipped for v1:</strong> TICK_LEDGER ingestion, recovery modelling, probability models, and unverified physical-cause claims.</div>
+      </section>
+
+      <section id="validation">
+        <div class="target">
+          <strong>≥80%</strong>
+          <p><b>Validation constraint:</b> tune only minimum affected devices, minimum affected share, temporal overlap, and the “almost all zones” fraction. Choose the simplest values that capture at least 80% of known outages while minimizing false promises.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>Verified V3 attribution plan · H3 remains an aggregation layer, never the source of truth.</footer>
+  </div>
+</body>
+</html>
