@@ -60,6 +60,29 @@
     .group-rule-flow { display: grid; grid-template-columns: 1fr auto 1.25fr auto 1.25fr auto 1fr; gap: 8px; align-items: stretch; }
     .group-rule-flow code { display: inline-block; margin: 3px 0; color: var(--orange); font-weight: 800; }
 
+    .data-model-panel { margin-bottom: 16px; }
+    .data-model-panel > p { margin: -8px 0 14px; color: var(--muted); }
+    .data-model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .data-block { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    .data-block.wide { grid-column: 1 / -1; }
+    .data-block h3 { margin: 0; padding: 9px 10px; background: var(--blue-bg); color: var(--blue); }
+    .data-block h3 span { color: var(--muted); font-size: 11px; font-weight: 600; }
+    .data-table-wrap { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .data-block.wide .data-table { min-width: 760px; }
+    .data-table th, .data-table td { padding: 7px 8px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .data-table thead th { background: #f8fafc; color: var(--muted); }
+    .data-table code { overflow-wrap: anywhere; color: var(--ink); }
+    .data-note { margin: 0; padding: 8px 10px; border-top: 1px solid var(--line); background: var(--orange-bg); }
+    .data-contracts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 9px; }
+    .data-contracts pre { font-size: 11px; }
+    .source-registry { margin-bottom: 12px; overflow-x: auto; }
+    .source-registry .data-table { min-width: 900px; }
+    .source-status { font-weight: 800; white-space: nowrap; }
+    .source-status.verified { color: var(--green); }
+    .source-status.missing { color: var(--red); }
+    .pseudocode { margin: 0; padding: 9px 10px; border-top: 1px solid var(--line); border-radius: 0; font-size: 11px; line-height: 1.45; white-space: pre-wrap; }
+
     .rules-panel { margin-bottom: 16px; }
     .rules-panel > p { margin: -8px 0 14px; color: var(--muted); }
     .rule-parameters, .state-rules { display: grid; gap: 8px; }
@@ -155,7 +178,8 @@
     @media screen and (max-width: 900px) {
       header, .opening, .support-grid { display: grid; grid-template-columns: 1fr; align-items: start; }
       .target { min-width: 0; }
-      .requirements, .source-row, .output-row, .schemas, .validation, .rule-parameters, .state-rules { grid-template-columns: 1fr; }
+      .requirements, .source-row, .output-row, .schemas, .validation, .rule-parameters, .state-rules, .data-model-grid, .data-contracts { grid-template-columns: 1fr; }
+      .data-block.wide { grid-column: auto; }
       .flow-row, .group-rule-flow { grid-template-columns: 1fr; }
       .arrow { height: 24px; transform: rotate(90deg); }
       .cause-head { display: block; }
@@ -194,6 +218,9 @@
       .dry-run th, .dry-run td { padding: 3px 5px; }
       .result { margin-top: 5px; padding: 5px 7px; }
       .rules-panel { margin-bottom: 10px; }
+      .data-model-panel { margin-bottom: 10px; }
+      .data-block { break-inside: avoid-page; }
+      .data-table th, .data-table td { padding: 4px 5px; }
       .rule-parameter, .state-rule { padding: 7px 8px; }
       .rule-table th, .rule-table td { padding: 5px 6px; }
       .rule-table tr { break-inside: avoid-page; }
@@ -292,6 +319,275 @@
         </div>
       </div>
       <div class="join-note"><strong>Example names:</strong> CSP Alpha is the provider being evaluated; CSP Beta is the other provider compared beside it in the same H3. They are placeholders, not real company names.<br><strong>Dry run:</strong> Alpha has 8/10 failed routers and Beta has 7/9 inside the same 30-minute window. Both are healthy in their other hexes. The same-hex comparison is YES, the cross-hex comparison is NO, so the rule engine returns <strong>AREA-SHARED</strong>.</div>
+    </section>
+
+    <section class="panel data-model-panel" aria-labelledby="data-model-title">
+      <h2 id="data-model-title">Data tables, columns, and calculation logic</h2>
+      <p>The full contract from verified source rows to rule inputs. Physical references are separated from logical derived tables so unresolved dependencies are visible.</p>
+
+      <h3>Physical table reference registry</h3>
+      <div class="source-registry">
+        <table class="data-table">
+          <thead><tr><th>Reference</th><th>Status</th><th>Columns used here</th><th>Role and limitation</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>PROD_DB.BUSINESS_EFFICIENCY_ROUTER_OUTAGE_DETECTION_PUBLIC.OUTAGE_MEMBER_V3</code></td>
+              <td class="source-status verified">VERIFIED</td>
+              <td><code>OUTAGE_ID</code>, <code>DEVICE_ID</code>, <code>CSP_ID</code>, <code>MEMBER_FIRST_FAIL_AT_IST</code>, <code>_FIVETRAN_DELETED</code></td>
+              <td>Authoritative outage membership source for this design.</td>
+            </tr>
+            <tr>
+              <td><code>PROD_DB.PUBLIC.T_DEVICE</code></td>
+              <td class="source-status verified">VERIFIED COMPONENT</td>
+              <td><code>DEVICE_ID</code>, <code>LONG_NAS_ID</code>, <code>NASID</code>, <code>_FIVETRAN_DELETED</code></td>
+              <td>Audited one-to-one device-to-NASID bridge. It does not itself provide historical H3.</td>
+            </tr>
+            <tr>
+              <td><code>PROD_DB.DBT.ACTIVE_BASE</code></td>
+              <td class="source-status verified">VERIFIED COMPONENT</td>
+              <td><code>ACCOUNT_ID</code>, <code>NASID</code>, <code>LATITUDE</code>, <code>LONGITUDE</code>, <code>ACTIVE_STATE</code>, <code>LOCATION_START_TIME</code>, <code>PLAN_EXPIRY_TIME</code>, <code>SOURCE</code></td>
+              <td>Audited CUSTOMER_V2 service location and validity source used to derive H3. Current rows may not represent every historical location change.</td>
+            </tr>
+            <tr>
+              <td><code>PROD_DB.BUSINESS_EFFICIENCY_ROUTER_OUTAGE_DETECTION_PUBLIC.OUTAGE_V3</code></td>
+              <td class="source-status verified">VALIDATION ONLY</td>
+              <td><code>OUTAGE_ID</code>, <code>CSP_ID</code>, <code>OPENED_AT_IST</code></td>
+              <td>Can validate outage ownership. Do not use <code>OPENED_AT_IST</code> as failure start.</td>
+            </tr>
+            <tr>
+              <td><code>TBC</code> — Historical <code>device_id → h3_id</code> source</td>
+              <td class="source-status missing">TBC — TO BE CREATED</td>
+              <td><code>DEVICE_ID</code>, coordinates or <code>H3_ID</code>, <code>VALID_FROM</code>, <code>VALID_TO</code></td>
+              <td>New table to be created. ACTIVE_BASE + T_DEVICE is the audited candidate path, subject to historical-validity confirmation.</td>
+            </tr>
+            <tr>
+              <td><code>TBC</code> — Time-aware <code>CSP_ID × H3_ID</code> active baseline</td>
+              <td class="source-status missing">TBC — TO BE CREATED</td>
+              <td><code>CSP_ID</code>, <code>H3_ID</code>, <code>BASELINE_TIME</code>, <code>ELIGIBLE_DEVICES</code></td>
+              <td>New table to be created with the CSP-association join. Required before production bucketing.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="data-model-grid">
+        <article class="data-block">
+          <h3>1. Source outage members <span>verified table</span></h3>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Column</th><th>Use or logic</th></tr></thead>
+              <tbody>
+                <tr><td><code>outage_id</code></td><td>Preserve as the published source outage ID.</td></tr>
+                <tr><td><code>device_id</code></td><td>Join to historical router location.</td></tr>
+                <tr><td><code>csp_id</code></td><td>Provider being evaluated. One source outage belongs to one CSP.</td></tr>
+                <tr><td><code>member_first_fail_at_ist</code></td><td>Router failure time.</td></tr>
+                <tr><td><code>outage_start_ist</code></td><td><code>MIN(member_first_fail_at_ist)</code> by <code>outage_id</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="data-note"><strong>Physical table:</strong> <code>OUTAGE_MEMBER_V3</code>.</p>
+          <pre class="pseudocode">FOR EACH source row:
+  IF _FIVETRAN_DELETED = TRUE:
+    SKIP row
+  ELSE:
+    KEEP outage_id, device_id, csp_id, failure_time
+
+FOR EACH outage_id:
+  outage_start = MIN(failure_time)</pre>
+        </article>
+
+        <article class="data-block">
+          <h3>2. Historical router location <span>TBC — table to be created</span></h3>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Column</th><th>Use or logic</th></tr></thead>
+              <tbody>
+                <tr><td><code>device_id</code></td><td>Join key from the outage member.</td></tr>
+                <tr><td><code>h3_id</code></td><td>Hex containing the router when it failed.</td></tr>
+                <tr><td><code>valid_from</code></td><td>Location effective start.</td></tr>
+                <tr><td><code>valid_to</code></td><td>Location effective end; may be open-ended.</td></tr>
+                <tr><td><code>mapping_status</code></td><td><code>VALID</code>, <code>MISSING</code>, or <code>AMBIGUOUS</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="data-note"><strong>Candidate references:</strong> bridge through <code>PROD_DB.PUBLIC.T_DEVICE</code> to <code>PROD_DB.DBT.ACTIVE_BASE</code>, then derive H3 from coordinates. Production use requires confirmation that the validity fields cover historical location changes.</p>
+          <pre class="pseudocode">candidates = T_DEVICE JOIN ACTIVE_BASE
+  ON unique device_id → NASID
+
+IF exactly one candidate is valid at failure_time:
+  mapping_status = VALID
+  h3_id = H3(latitude, longitude)
+ELSE IF no candidate is valid:
+  mapping_status = MISSING
+  h3_id = NULL
+ELSE:
+  mapping_status = AMBIGUOUS
+  h3_id = NULL</pre>
+        </article>
+
+        <article class="data-block">
+          <h3>3. CSP–H3 active baseline <span>TBC — table to be created</span></h3>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Column</th><th>Use or logic</th></tr></thead>
+              <tbody>
+                <tr><td><code>csp_id</code>, <code>h3_id</code></td><td>Provider and hex comparison keys.</td></tr>
+                <tr><td><code>baseline_time</code></td><td>Snapshot or validity time covering the outage start.</td></tr>
+                <tr><td><code>eligible_devices</code></td><td>Active routers that could have reported in this CSP–H3.</td></tr>
+                <tr><td><code>eligible_h3_count</code></td><td>Comparable active H3s belonging to the CSP.</td></tr>
+                <tr><td><code>available_csp_count</code></td><td>CSPs available for comparison in the H3.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="data-note"><strong>As-of join:</strong> <code>csp_id + h3_id + outage_start_ist</code>. A missing or zero denominator becomes UNKNOWN.</p>
+          <pre class="pseudocode">IF CSP association is missing:
+  baseline_status = UNKNOWN
+ELSE IF no baseline covers outage_start:
+  baseline_status = UNKNOWN
+ELSE:
+  eligible_devices = COUNT(active devices)
+  eligible_h3_count = COUNT(active H3s for CSP)
+  available_csp_count = COUNT(CSPs in H3)
+
+  IF eligible_devices &lt;= 0:
+    baseline_status = UNKNOWN
+  ELSE:
+    baseline_status = VALID</pre>
+        </article>
+
+        <article class="data-block wide">
+          <h3>4. Derived CSP–H3 event <span>one row per outage_id + csp_id + h3_id</span></h3>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Column</th><th>Calculation</th><th>Why the rules need it</th></tr></thead>
+              <tbody>
+                <tr><td><code>outage_id</code>, <code>csp_id</code>, <code>h3_id</code></td><td>Grouping keys after the two as-of joins.</td><td>Retain source ownership and locate impact.</td></tr>
+                <tr><td><code>outage_start_ist</code></td><td>Earliest member failure for the source outage.</td><td>Match related source outages in time.</td></tr>
+                <tr><td><code>affected_devices</code></td><td><code>COUNT(DISTINCT device_id)</code>.</td><td>Minimum affected-device gate.</td></tr>
+                <tr><td><code>eligible_devices</code></td><td>Joined active baseline denominator.</td><td>Prevents small counts from being interpreted without context.</td></tr>
+                <tr><td><code>affected_share</code></td><td><code>affected_devices / eligible_devices</code>, only when denominator is positive.</td><td>Minimum affected-share gate.</td></tr>
+                <tr><td><code>csp_h3_state</code></td><td>DOWN when count and share both pass; UP when evidence is valid but DOWN is false; otherwise UNKNOWN.</td><td>Single input state used by every comparison rule.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <pre class="pseudocode">FOR EACH outage_id + csp_id + h3_id:
+  IF mapping_status != VALID OR baseline_status != VALID:
+    csp_h3_state = UNKNOWN
+  ELSE:
+    affected_devices = COUNT(DISTINCT failed device_id)
+    affected_share = affected_devices / eligible_devices
+
+    IF affected_devices &gt;= MIN_AFFECTED_DEVICES
+       AND affected_share &gt;= MIN_AFFECTED_SHARE:
+      csp_h3_state = DOWN
+    ELSE:
+      csp_h3_state = UP</pre>
+        </article>
+
+        <article class="data-block wide">
+          <h3>5. Cross-outage comparison event <span>derived table</span></h3>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Column</th><th>Calculation</th><th>Rule question answered</th></tr></thead>
+              <tbody>
+                <tr><td><code>attribution_event_id</code></td><td>Derived ID grouping source outages whose starts fall inside <code>OVERLAP_WINDOW</code>.</td><td>Which source outages should be compared?</td></tr>
+                <tr><td><code>time_gap_minutes</code></td><td>Difference between the earliest and latest source-outage starts in the group.</td><td>Are the failures close enough in time?</td></tr>
+                <tr><td><code>down_csp_count</code></td><td>Distinct CSPs with <code>csp_h3_state = DOWN</code> in the same H3.</td><td>Are multiple CSPs down in this H3?</td></tr>
+                <tr><td><code>compared_csp_count</code></td><td>Distinct CSPs with DOWN or UP evidence in the H3.</td><td>Does a valid same-H3 comparison exist?</td></tr>
+                <tr><td><code>affected_h3_count</code></td><td>Distinct DOWN H3s for the CSP in the attribution event.</td><td>Is the CSP also down elsewhere?</td></tr>
+                <tr><td><code>eligible_h3_count</code></td><td>Comparable active H3s for the CSP.</td><td>What is the CSP-wide denominator?</td></tr>
+                <tr><td><code>affected_h3_share</code></td><td><code>affected_h3_count / eligible_h3_count</code>.</td><td>Is the CSP down across almost all H3s?</td></tr>
+                <tr><td><code>neighbor_csp_up</code></td><td>True when another CSP in the same H3 has fresh UP evidence.</td><td>Is this isolated to the affected CSP?</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="data-note"><strong>Identity rule:</strong> <code>attribution_event_id</code> groups comparisons only. Every original <code>outage_id</code> remains attached and is still the published ID.</p>
+          <pre class="pseudocode">GROUP source outages when time_gap &lt;= OVERLAP_WINDOW
+
+FOR EACH attribution_event_id + h3_id:
+  down_csp_count = COUNT(DISTINCT CSP WHERE state = DOWN)
+  compared_csp_count = COUNT(DISTINCT CSP WHERE state IN (DOWN, UP))
+
+FOR EACH attribution_event_id + csp_id:
+  affected_h3_count = COUNT(DISTINCT H3 WHERE state = DOWN)
+  IF eligible_h3_count &gt; 0:
+    affected_h3_share = affected_h3_count / eligible_h3_count
+  ELSE:
+    affected_h3_share = NULL
+
+neighbor_csp_up = EXISTS(other CSP in same H3 WHERE state = UP)</pre>
+        </article>
+
+        <article class="data-block wide">
+          <h3>6. Rule-input matrix <span>columns feeding each decision</span></h3>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Rule question</th><th>Columns used</th></tr></thead>
+              <tbody>
+                <tr><td>Enough evidence?</td><td><code>mapping_status</code>, <code>eligible_devices</code>, <code>affected_devices</code>, <code>affected_share</code>, and data freshness.</td></tr>
+                <tr><td>Multiple CSPs down in this H3?</td><td><code>down_csp_count</code>, <code>compared_csp_count</code>, and <code>time_gap_minutes</code>.</td></tr>
+                <tr><td>Same CSPs down in other H3s?</td><td><code>affected_h3_count</code> and the CSP–H3 states inside the attribution event.</td></tr>
+                <tr><td>CSP down almost everywhere?</td><td><code>affected_h3_count</code>, <code>eligible_h3_count</code>, and <code>affected_h3_share</code>.</td></tr>
+                <tr><td>Neighboring CSPs up?</td><td><code>neighbor_csp_up</code>, compared CSP–H3 states, and comparison freshness.</td></tr>
+                <tr><td>Confidence grade?</td><td>Comparison coverage, denominator size, mapping quality, and distance from the selected thresholds.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <pre class="pseudocode">IF valid evidence exists AND no CSP–H3 is DOWN:
+  bucket = NOISE
+ELSE IF down_csp_count &gt;= 2:
+  IF other-H3 comparison is missing:
+    bucket = UNKNOWN
+  ELSE IF the same CSPs are DOWN in other H3s:
+    bucket = REGIONAL
+  ELSE:
+    bucket = AREA-SHARED
+ELSE IF affected_h3_share is missing:
+  bucket = UNKNOWN
+ELSE IF affected_h3_share &gt;= ALMOST_ALL_H3_SHARE:
+  bucket = ISP / OLT
+ELSE IF neighboring-CSP comparison is missing:
+  bucket = UNKNOWN
+ELSE IF neighbor_csp_up = TRUE:
+  bucket = LOCAL OPERATOR FAULT
+ELSE:
+  bucket = UNKNOWN</pre>
+        </article>
+
+        <article class="data-block wide">
+          <h3>7. Output contracts <span>published minimum plus internal audit evidence</span></h3>
+          <div class="data-contracts">
+            <pre>PUBLISHED
+outage_id
+bucket
+confidence</pre>
+            <pre>INTERNAL AUDIT
+outage_id
+attribution_event_id
+csp_id
+h3_id
+outage_start_ist
+affected_devices
+eligible_devices
+affected_share
+affected_h3_count
+eligible_h3_count
+compared_csp_count
+rule_matched
+bucket
+confidence</pre>
+          </div>
+          <pre class="pseudocode">IF required comparisons are complete
+   AND matched values are clearly beyond thresholds:
+  confidence = HIGH
+ELSE:
+  confidence = MEDIUM
+
+FOR EACH source outage_id in attribution_event_id:
+  PUBLISH outage_id, bucket, confidence
+  RETAIN all evidence columns and rule_matched</pre>
+        </article>
+      </div>
     </section>
 
     <section class="panel rules-panel" aria-labelledby="rules-title">
