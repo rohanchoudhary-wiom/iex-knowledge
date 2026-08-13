@@ -21,22 +21,68 @@ A confirmed silent device is evidence. It becomes a shared outage only when othe
 
 ## Source
 
-[sql/01_outage_members.sql](sql/01_outage_members.sql) selects the only four outage fields needed from the V3 tables:
+[sql/outage_devices.sql](sql/outage_devices.sql) is the only query:
 
 ```text
-outage_id
-device_id
-csp_id
-member_first_fail_at_ist
+active DYNAMODB_READ.CUSTOMER_V_2
+  → JOIN T_ADDRESS by GOOGLE_ADDRESS_ID for latitude and longitude
+  → JOIN T_DEVICE by DEVICE_ID for CSP ID
+  → keep device ID, CSP ID, mobile, latitude, longitude, and fixed H3
+  → LEFT JOIN OUTAGE_MEMBER_V3 directly from CUSTOMER_V_2.DEVICE_ID
+  → data/input/outage_devices.csv
 ```
 
-Derive:
+No `ACTIVE_BASE` rows are used. The left join retains active Customer V2 devices without an outage, so the same CSV provides both the active CSP-H3 denominator and affected outage members.
+
+## CSV implementation
+
+The attribution workflow reads and writes CSV only. The SQL file is a SELECT-only export; the Python script does not connect to Snowflake.
 
 ```text
-outage_start_ist = MIN(member_first_fail_at_ist) by outage_id
+spatial_outages/
+├── attribute.py
+├── attribution/
+│   ├── csv_io.py
+│   ├── engine.py
+│   ├── self_check.py
+│   ├── domain/
+│   │   ├── thresholds.py
+│   │   ├── outage.py
+│   │   ├── cell_state.py
+│   │   ├── event.py
+│   │   ├── rule_context.py
+│   │   └── decision.py
+│   └── rules/
+│       ├── noise.py
+│       ├── area_shared.py
+│       ├── regional.py
+│       ├── isp_olt.py
+│       ├── local_csp_fault.py
+│       ├── unknown.py
+│       └── ordered.py
+├── data/
+│   ├── input/
+│   │   └── outage_devices.csv
+│   └── output/
+│       ├── csp_h3_states.csv
+│       ├── attribution_events.csv
+│       ├── outage_evidence.csv
+│       └── outage_buckets.csv
+├── sql/
+│   └── outage_devices.sql
+├── public/
+│   └── severity.html
+└── Outage Cause Attribution Tree.jam
 ```
 
-Then attach each device's H3 at the time of failure and the eligible-device count for that CSP/H3.
+The SQL exports `device_id, csp_id, mobile, latitude, longitude, h3_id, outage_id, member_first_fail_at_ist`. CSP ID comes from `T_DEVICE`; the unrelated `OUTAGE_MEMBER_V3.CSP_ID` is not used. The Python runner uses only the IDs, H3, and outage fields; mobile and coordinates remain reconciliation evidence. The export is ignored by Git because it contains direct identifiers.
+
+Run:
+
+```bash
+python spatial_outages/attribute.py
+python spatial_outages/attribute.py --self-check
+```
 
 ## Raw severity
 
@@ -54,9 +100,9 @@ These rollups answer different questions:
 
 ```text
 device      → is this device down?
-CSP × H3    → is this operator down in this zone?
-H3          → are multiple operators down in this zone?
-CSP         → is this operator down across its network?
+CSP × H3    → is this CSP down in this zone?
+H3          → are multiple CSPs down in this zone?
+CSP         → is this CSP down across its network?
 outage      → what bucket and confidence should we publish?
 ```
 
@@ -68,40 +114,30 @@ Apply the rules in this order. First match wins. Any ambiguous pattern is `UNKNO
 Enough evidence?
 ├─ NO  → NOISE
 └─ YES
-   └─ Multiple operators down in the same zone?
+   └─ Multiple CSPs down in the same zone?
       ├─ YES
-      │  └─ Are those operators also down in their other zones?
+      │  └─ Are those CSPs also down in their other zones?
       │     ├─ NO  → AREA-SHARED
       │     │         Likely power or shared physical dependency
       │     └─ YES → REGIONAL
       │               Wide-area upstream or regional event
       └─ NO
-         └─ Is the affected operator down across all/almost all zones?
+         └─ Is the affected CSP down across all/almost all zones?
             ├─ YES → ISP / OLT
-            │         Operator-wide upstream / OLT failure
+            │         CSP-wide upstream / OLT failure
             └─ NO
-               └─ Are neighboring operators in this zone up?
-                  ├─ YES           → LOCAL OPERATOR FAULT
+               └─ Are neighboring CSPs in this zone up?
+                  ├─ YES           → LOCAL CSP FAULT
                   │                   Fibre cut, local switch, node power issue
                   └─ NO COMPARISON → UNKNOWN
-                                      Single-zone operator or single-operator zone
+                                      Single-zone CSP or single-CSP zone
 ```
 
 The tree locates the likely failure domain. `backend bug`, `power cut`, `fibre cut`, `OLT fault`, and `ISP down` require supporting operational evidence before being stated as a root cause.
 
 ## Outputs
 
-Device-level evidence:
-
-```text
-device_id
-outage_id
-csp_id
-h3_id
-outage_start_ist
-silence_minutes
-device_bucket
-```
+`csp_h3_states.csv`, `attribution_events.csv`, and `outage_evidence.csv` retain the calculations behind each decision.
 
 Published outage result:
 
@@ -117,19 +153,10 @@ Confidence is `HIGH` or `MEDIUM` based on comparison coverage and distance from 
 
 Only tune:
 
-1. minimum affected devices;
-2. minimum affected share within CSP × H3;
-3. time window for matching outages;
-4. percentage of CSP zones meaning “almost all.”
+1. minimum affected share within CSP × H3;
+2. time window for matching outages;
+3. percentage of CSP zones meaning “almost all.”
 
 Select the threshold set with the lowest false-promise rate while retaining at least 80% outage recall.
 
-## Next step
-
-Join `data/outage_members_v3.csv` to historical device H3 and active CSP-H3 denominators. The first deliverable is one row per source outage:
-
-```text
-outage_id, bucket, confidence
-```
-
-Detailed design: [SEVERITY_MODEL.md](SEVERITY_MODEL.md) · Visual: [public/severity.html](public/severity.html)
+Rules: [rules.md](rules.md) · Detailed design: [SEVERITY_MODEL.md](SEVERITY_MODEL.md) · Visual: [public/severity.html](public/severity.html)

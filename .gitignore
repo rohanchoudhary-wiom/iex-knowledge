@@ -1,5 +1,8 @@
 .env
+.DS_Store
 __pycache__/
 *.pyc
 **/.ocsp_cache.json
 acs_outage_prediction/outputs/
+spatial_outages/data/output/*.csv
+spatial_outages/data/input/outage_devices.csv

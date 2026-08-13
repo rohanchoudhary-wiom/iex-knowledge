@@ -36,40 +36,38 @@ outage_start_ist = MIN(member_first_fail_at_ist) per outage_id
 
 `OUTAGE_V3.OPENED_AT_IST` is detector creation time, not outage start: it trails `FIRST_FAIL_AT_IST` by 10–25 minutes (median 20). `TICK_LEDGER_V3` is detector-health metadata and is not needed for v1 attribution.
 
-## Required external evidence
+## Required evidence
 
-The four-column source is enough from the three V3 tables, but the attribution tree also needs:
+Active `PROD_DB.DYNAMODB_READ.CUSTOMER_V_2` supplies the customer and device ID. `GOOGLE_ADDRESS_ID → PROD_DB.PUBLIC.T_ADDRESS.ID` supplies latitude and longitude, while `DEVICE_ID → PROD_DB.PUBLIC.T_DEVICE.DEVICE_ID` supplies the CSP ID. No `ACTIVE_BASE` rows are used. The left join to `OUTAGE_MEMBER_V3` adds affected members without dropping healthy active devices.
 
-1. a historical `device_id → h3_id` mapping valid at `member_first_fail_at_ist`;
-2. eligible active-device counts per `csp_id, h3_id` at that time;
-3. the active-zone count per CSP and the operators available for comparison in each zone.
+## CSV-only implementation
 
-Without these denominators, affected counts cannot establish that an operator or zone was down.
+`sql/outage_devices.sql` is one SELECT joining address, device, and outage data. It exports `data/input/outage_devices.csv`, the only file read by `attribute.py`. Mobile is retained for reconciliation but never used by the rules, and the identifier-bearing CSV is ignored by Git.
+
+This is deliberately a current-active baseline. Add dated fleet snapshots only if historical denominators become a validated requirement.
 
 ## Minimal build plan
 
-1. Extract the four-column member fact and filter Fivetran deletions.
-2. Attach the device's historical H3; reject ambiguous mappings and report coverage.
-3. Build eligible-device denominators for every CSP-H3 at the event time.
-4. Aggregate to `outage_id, csp_id, h3_id` with affected count, eligible count, affected share, and first-failure time.
-5. Mark each CSP-H3 as `DOWN`, `UP`, or `UNKNOWN` using validated count/share thresholds.
-6. Match temporally overlapping source outages so different operators and zones can be compared.
-7. Apply the attribution tree in order; the first matching rule wins.
-8. Emit the minimal result and retain supporting evidence for audit.
+1. Export active Customer V2 devices, T_ADDRESS coordinates, CSP IDs, and outage membership using the single SELECT.
+2. Count distinct active devices per CSP-H3 and affected devices per comparison event.
+3. Use affected share alone to assign each valid CSP-H3 as `DOWN` or `UP`; there is no device-count threshold.
+4. Match temporally overlapping source outages so CSPs and zones can be compared.
+5. Apply the attribution tree in order; the first matching rule wins.
+6. Emit the minimal result and retain supporting evidence for audit.
 
 ## Attribution tree
 
 1. **Enough evidence?**
    - No → `NOISE`.
-2. **Multiple operators down in the same zone?**
-   - Yes: **Are those operators also down in their other zones?**
+2. **Multiple CSPs down in the same zone?**
+   - Yes: **Are those CSPs also down in their other zones?**
      - No → `AREA-SHARED`: likely power or shared physical dependency.
      - Yes → `REGIONAL`: wide-area upstream or regional event.
-3. Otherwise, **is the affected operator down across all/almost all of its zones?**
-   - Yes → `ISP / OLT`: operator-wide upstream or OLT failure.
-4. Otherwise, **are neighboring operators in this zone up?**
-   - Yes → `LOCAL OPERATOR FAULT`: fibre cut, local switch, node power issue, etc.
-   - No comparison → `UNKNOWN`: single-zone operator or single-operator zone.
+3. Otherwise, **is the affected CSP down across all/almost all of its zones?**
+   - Yes → `ISP / OLT`: CSP-wide upstream or OLT failure.
+4. Otherwise, **are neighboring CSPs in this zone up?**
+   - Yes → `LOCAL CSP FAULT`: fibre cut, local switch, node power issue, etc.
+   - No comparison → `UNKNOWN`: single-zone CSP or single-CSP zone.
 
 Any ambiguous pattern falls into `UNKNOWN`.
 
@@ -86,7 +84,7 @@ Internal audit evidence:
 ```text
 outage_id, attribution_event_id, csp_id, h3_id, outage_start_ist,
 affected_devices, eligible_devices, affected_share,
-affected_h3_count, compared_csp_count, rule_matched,
+affected_h3_count, eligible_h3_count, compared_csp_count, rule_matched,
 bucket, confidence
 ```
 
@@ -102,9 +100,8 @@ Use evidence grades until outcome-calibrated probabilities exist:
 
 ## Validation
 
-Tune only four v1 parameters:
+Tune only three v1 parameters:
 
-- minimum affected devices;
 - minimum affected share;
 - temporal overlap window;
 - fraction defining “almost all zones.”

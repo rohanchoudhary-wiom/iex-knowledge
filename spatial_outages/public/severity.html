@@ -3,229 +3,216 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Spatial outage architecture</title>
+  <title>Fluid outage polygon engine</title>
   <style>
     :root {
-      --ink: #142033;
-      --muted: #536176;
-      --line: #cbd5e1;
+      --ink: #10223a;
+      --muted: #58677a;
+      --line: #d7e0ea;
       --blue: #175cd3;
-      --blue-bg: #eff6ff;
+      --blue-bg: #edf5ff;
       --green: #067647;
-      --green-bg: #ecfdf3;
+      --green-bg: #eafaf1;
       --orange: #b54708;
-      --orange-bg: #fff7ed;
+      --orange-bg: #fff5e9;
       --red: #b42318;
-      --red-bg: #fef3f2;
-      --paper: #f8fafc;
+      --red-bg: #fff1f0;
+      --slate-bg: #f1f5f9;
     }
 
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { width: min(1320px, calc(100% - 32px)); margin: 24px auto 60px; }
+    body { margin: 0; background: #f3f6fa; color: var(--ink); font: 15px/1.48 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { width: min(1240px, calc(100% - 32px)); margin: 24px auto 72px; }
     h1, h2, h3, p { margin-top: 0; }
-    h1 { margin-bottom: 8px; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; letter-spacing: -.035em; }
-    h2 { margin-bottom: 14px; font-size: 22px; }
+    h1 { margin-bottom: 8px; font-size: clamp(32px, 4.5vw, 54px); line-height: 1.02; letter-spacing: -.04em; }
+    h2 { margin-bottom: 12px; font-size: 23px; }
     h3 { margin-bottom: 6px; font-size: 15px; }
-    code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
     .muted { color: var(--muted); }
-    .panel { padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+    .panel { padding: 22px; border: 1px solid var(--line); border-radius: 15px; background: #fff; box-shadow: 0 9px 26px rgba(16,34,58,.05); }
 
-    header { display: flex; justify-content: space-between; gap: 28px; align-items: end; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid var(--ink); }
+    header { display: grid; grid-template-columns: 1fr 250px; gap: 28px; align-items: end; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid var(--ink); }
     header p { max-width: 820px; margin-bottom: 0; color: var(--muted); font-size: 17px; }
-    .target { min-width: 220px; padding: 14px 18px; border-left: 5px solid var(--blue); background: var(--blue-bg); }
-    .target strong { display: block; color: var(--blue); font-size: 26px; }
+    .target { padding: 15px 18px; border-left: 5px solid var(--blue); background: var(--blue-bg); }
+    .target strong { display: block; color: var(--blue); font-size: 25px; }
 
-    .opening { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; margin-bottom: 16px; }
+    .opening { display: grid; grid-template-columns: .8fr 1.4fr; gap: 16px; margin-bottom: 16px; }
     .problem { border-left: 5px solid var(--red); }
     .problem p { margin-bottom: 0; font-size: 17px; }
     .requirements { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .requirement { padding: 10px 12px; border-radius: 8px; background: var(--blue-bg); }
+    .requirement { padding: 11px 12px; border-radius: 8px; background: var(--blue-bg); }
     .requirement strong { display: block; margin-bottom: 2px; color: var(--blue); }
 
-    .architecture { margin-bottom: 16px; padding: 22px; border: 2px solid var(--ink); border-radius: 14px; background: #fff; }
-    .architecture > p { margin: -8px 0 18px; color: var(--muted); }
-    .lane-label { margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-    .source-row, .output-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    .flow-row { display: grid; grid-template-columns: repeat(11, minmax(0, auto)); gap: 7px; align-items: stretch; }
+    .definition { margin: 24px 0 16px; padding: 25px; border-radius: 18px; background: #0f2038; color: #fff; box-shadow: 0 18px 45px rgba(15,32,56,.18); }
+    .definition h2 { margin-bottom: 5px; }
+    .definition > p { margin-bottom: 18px; color: #ccd8e8; }
+    .equation { display: grid; grid-template-columns: 1fr auto 1.3fr; gap: 14px; align-items: center; padding: 18px; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; background: rgba(255,255,255,.08); }
+    .equation-part { padding: 13px 15px; border-radius: 9px; background: rgba(255,255,255,.09); }
+    .equation-part strong { display: block; margin-bottom: 3px; color: #fff; font-size: 19px; }
+    .equation-part small { color: #dbe6f3; }
+    .equation-op { color: #7dd3fc; font-size: 24px; font-weight: 900; text-align: center; }
+    .gate-notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .gate-note { padding: 10px 12px; border-top: 3px solid #6ee7b7; border-radius: 7px; background: rgba(255,255,255,.08); }
+    .gate-note strong { display: block; font-size: 12px; }
+    .gate-note small { color: #ccd8e8; }
+
+    .funnel { margin-bottom: 18px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: 0 12px 32px rgba(16,34,58,.06); }
+    .funnel > p { margin: -6px 0 18px; color: var(--muted); }
+    .funnel-steps { display: grid; gap: 8px; }
+    .funnel-step { display: grid; grid-template-columns: 58px 1fr auto; gap: 13px; align-items: center; width: var(--width); margin-inline: auto; padding: 13px 15px; border: 1px solid #bdd0ec; border-radius: 10px; background: var(--blue-bg); }
+    .funnel-step:nth-child(1) { --width: 100%; }
+    .funnel-step:nth-child(2) { --width: 91%; background: #eef2ff; }
+    .funnel-step:nth-child(3) { --width: 82%; border-color: #efc394; background: var(--orange-bg); }
+    .funnel-step:nth-child(4) { --width: 73%; border-color: #9bd4b3; background: var(--green-bg); }
+    .funnel-step:nth-child(5) { --width: 64%; background: var(--slate-bg); }
+    .funnel-step > span { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; background: var(--ink); color: #fff; font-size: 10px; font-weight: 900; letter-spacing: .05em; }
+    .funnel-step strong { display: block; margin-bottom: 2px; font-size: 16px; }
+    .funnel-step small { color: var(--muted); }
+    .funnel-step code { padding: 5px 7px; border-radius: 5px; background: #fff; white-space: nowrap; }
+
+    .stage { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; margin: 34px 0 12px; }
+    .stage > span { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 900; }
+    .stage h2 { margin: 0; font-size: 20px; }
+    .stage p { margin: 1px 0 0; color: var(--muted); }
+
+    .architecture { margin-bottom: 16px; }
+    .source-row, .output-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .output-row { grid-template-columns: repeat(4, 1fr); }
+    .flow-row { display: grid; grid-template-columns: repeat(9, minmax(0, auto)); gap: 7px; align-items: stretch; margin: 12px 0; }
     .box { min-width: 0; padding: 13px; border: 1px solid #94a3b8; border-radius: 9px; background: #fff; }
-    .box strong { display: block; margin-bottom: 4px; font-size: 14px; }
-    .box small { display: block; color: var(--muted); line-height: 1.35; }
-    .source { border-color: #84adff; background: var(--blue-bg); }
-    .process { border-color: #f0b27a; background: var(--orange-bg); }
-    .output { border-color: #75c69b; background: var(--green-bg); }
-    .arrow { display: grid; place-items: center; color: var(--orange); font-size: 24px; font-weight: 900; }
-    .down { height: 34px; color: var(--blue); font-size: 24px; text-align: center; }
-    .join-note { margin-top: 12px; padding: 10px 12px; border-left: 4px solid var(--orange); background: var(--orange-bg); }
-    .group-rule-flow { display: grid; grid-template-columns: 1fr auto 1.25fr auto 1.25fr auto 1fr; gap: 8px; align-items: stretch; }
-    .group-rule-flow code { display: inline-block; margin: 3px 0; color: var(--orange); font-weight: 800; }
+    .box strong { display: block; margin-bottom: 4px; }
+    .box small { display: block; color: var(--muted); }
+    .source { border-color: #8cb4f8; background: var(--blue-bg); }
+    .process { border-color: #efbc87; background: var(--orange-bg); }
+    .output { border-color: #85cda7; background: var(--green-bg); }
+    .arrow { display: grid; place-items: center; color: var(--orange); font-size: 23px; font-weight: 900; }
+    .lane { margin: 14px 0 6px; color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+    .join-note { margin: 12px 0 0; padding: 10px 12px; border-left: 4px solid var(--orange); background: var(--orange-bg); }
 
-    .data-model-panel { margin-bottom: 16px; }
-    .data-model-panel > p { margin: -8px 0 14px; color: var(--muted); }
-    .data-model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .data-block { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-    .data-block.wide { grid-column: 1 / -1; }
-    .data-block h3 { margin: 0; padding: 9px 10px; background: var(--blue-bg); color: var(--blue); }
-    .data-block h3 span { color: var(--muted); font-size: 11px; font-weight: 600; }
-    .data-table-wrap { overflow-x: auto; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .data-block.wide .data-table { min-width: 760px; }
-    .data-table th, .data-table td { padding: 7px 8px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
-    .data-table thead th { background: #f8fafc; color: var(--muted); }
-    .data-table code { overflow-wrap: anywhere; color: var(--ink); }
-    .data-note { margin: 0; padding: 8px 10px; border-top: 1px solid var(--line); background: var(--orange-bg); }
-    .data-contracts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 9px; }
-    .data-contracts pre { font-size: 11px; }
-    .source-registry { margin-bottom: 12px; overflow-x: auto; }
-    .source-registry .data-table { min-width: 900px; }
-    .source-status { font-weight: 800; white-space: nowrap; }
-    .source-status.verified { color: var(--green); }
-    .source-status.missing { color: var(--red); }
-    .pseudocode { margin: 0; padding: 9px 10px; border-top: 1px solid var(--line); border-radius: 0; font-size: 11px; line-height: 1.45; white-space: pre-wrap; }
+    .polygon-panel { margin-bottom: 16px; padding: 25px; border: 1px solid #e2c39f; border-radius: 17px; background: linear-gradient(135deg,#fff 0%,#fff8ef 100%); }
+    .polygon-panel > p { margin: -6px 0 18px; color: var(--muted); }
+    .polygon-layout { display: grid; grid-template-columns: .9fr 1.1fr; gap: 20px; align-items: center; }
+    .map { position: relative; min-height: 350px; overflow: hidden; border: 1px solid #d6e0eb; border-radius: 15px; background: #f8fbff; }
+    .blob { position: absolute; inset: 44px 42px 38px 45px; border: 3px solid var(--orange); border-radius: 42% 58% 52% 48% / 48% 38% 62% 52%; background: rgba(253,186,116,.22); transform: rotate(-3deg); }
+    .node { position: absolute; z-index: 2; display: grid; width: 28px; height: 28px; place-items: center; border: 3px solid #fff; border-radius: 50%; background: #94a3b8; color: transparent; box-shadow: 0 2px 7px rgba(15,23,42,.2); }
+    .node.down { background: var(--orange); }
+    .node.joined { background: var(--green); }
+    .node.seed { width: 34px; height: 34px; outline: 3px solid var(--blue); outline-offset: 3px; }
+    .node:nth-of-type(1) { left: 18%; top: 35%; } .node:nth-of-type(2) { left: 31%; top: 21%; }
+    .node:nth-of-type(3) { left: 45%; top: 32%; } .node:nth-of-type(4) { left: 59%; top: 18%; }
+    .node:nth-of-type(5) { left: 70%; top: 39%; } .node:nth-of-type(6) { left: 26%; top: 58%; }
+    .node:nth-of-type(7) { left: 41%; top: 53%; } .node:nth-of-type(8) { left: 55%; top: 61%; }
+    .node:nth-of-type(9) { left: 68%; top: 67%; } .node:nth-of-type(10) { left: 81%; top: 53%; }
+    .node:nth-of-type(11) { left: 9%; top: 72%; } .node:nth-of-type(12) { left: 84%; top: 16%; }
+    .map-title { position: absolute; z-index: 3; top: 14px; left: 16px; color: var(--orange); font-size: 11px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+    .map-result { position: absolute; z-index: 3; right: 15px; bottom: 13px; left: 15px; padding: 9px 11px; border-left: 4px solid var(--orange); background: rgba(255,255,255,.92); font-size: 12px; }
+    .legend { position: absolute; z-index: 3; top: 14px; right: 15px; display: flex; gap: 8px; color: var(--muted); font-size: 10px; }
+    .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 3px; border-radius: 50%; background: var(--orange); }
+    .legend i.green { background: var(--green); }
+    .bfs { display: grid; gap: 8px; counter-reset: bfs; }
+    .bfs-step { position: relative; padding: 11px 13px 11px 50px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+    .bfs-step::before { position: absolute; top: 11px; left: 13px; display: grid; width: 27px; height: 27px; place-items: center; border-radius: 50%; background: var(--orange); color: #fff; content: counter(bfs); counter-increment: bfs; font-size: 11px; font-weight: 900; }
+    .bfs-step strong { display: block; }
+    .bfs-step small { color: var(--muted); }
+    .contracts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 13px; }
+    .contract { padding: 11px 12px; border-radius: 8px; background: #fff; }
+    .contract strong { display: block; margin-bottom: 3px; color: var(--orange); }
 
-    .rules-panel { margin-bottom: 16px; }
-    .rules-panel > p { margin: -8px 0 14px; color: var(--muted); }
-    .rule-parameters, .state-rules { display: grid; gap: 8px; }
-    .rule-parameters { grid-template-columns: repeat(4, 1fr); margin-bottom: 12px; }
-    .state-rules { grid-template-columns: repeat(3, 1fr); margin-bottom: 14px; }
-    .rule-parameter, .state-rule { padding: 10px 12px; border-radius: 8px; background: var(--blue-bg); }
-    .rule-parameter code, .state-rule strong { display: block; margin-bottom: 3px; color: var(--blue); font-weight: 800; }
-    .state-rule.down-state { background: var(--green-bg); }
-    .state-rule.down-state strong { color: var(--green); }
-    .state-rule.unknown-state { background: #f1f5f9; }
-    .state-rule.unknown-state strong { color: #475569; }
-    .rule-table-wrap { overflow-x: auto; }
-    .rule-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
-    .rule-table th, .rule-table td { padding: 9px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
-    .rule-table thead th { background: #e2e8f0; }
-    .rule-table tbody th { width: 72px; color: var(--blue); white-space: nowrap; }
-    .rule-table .rule-result { width: 190px; background: var(--green-bg); color: var(--green); font-weight: 800; }
-    .rule-table .noise-result { background: var(--red-bg); color: var(--red); }
-    .rule-table .unknown-result { background: #f1f5f9; color: #475569; }
-    .rule-order-note { margin: 10px 0 0; padding: 9px 12px; border-left: 4px solid var(--red); background: var(--red-bg); font-weight: 700; }
+    pre { margin: 12px 0 0; padding: 14px; overflow: auto; border-radius: 9px; background: #0f172a; color: #e2e8f0; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
+    details { overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+    details + details { margin-top: 8px; }
+    summary { display: flex; justify-content: space-between; gap: 18px; padding: 11px 13px; cursor: pointer; color: var(--blue); font-weight: 800; }
+    summary span { color: var(--muted); font-size: 11px; font-weight: 600; text-align: right; }
+    details[open] summary { border-bottom: 1px solid var(--line); background: var(--blue-bg); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .wide { min-width: 820px; }
+    th, td { padding: 8px 9px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    thead th { background: var(--slate-bg); color: var(--muted); }
+    .data-note { margin: 0; padding: 9px 11px; border-top: 1px solid var(--line); background: var(--orange-bg); }
 
-    .cause-panel { margin-bottom: 16px; }
-    .cause-head { display: flex; justify-content: space-between; gap: 20px; align-items: baseline; }
-    .cause-head a { color: var(--blue); font-size: 12px; }
-    .jam-tree { min-width: 1040px; font-size: 13px; }
-    .tree-node { max-width: 340px; margin: auto; padding: 10px 12px; border: 1px solid #84adff; border-radius: 8px; background: var(--blue-bg); text-align: center; }
-    .tree-node strong { display: block; }
-    .tree-node.terminal { border-color: #75c69b; background: var(--green-bg); color: var(--green); }
-    .tree-node.terminal small { display: block; margin-top: 3px; color: var(--muted); }
-    .tree-node.noise { border-color: #f3a7a1; background: var(--red-bg); color: var(--red); }
-    .tree-node.unknown { border-color: var(--line); background: #f1f5f9; color: var(--muted); }
-    .tree-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
-    .tree-split.root { grid-template-columns: .55fr 2.45fr; }
-    .tree-branch { position: relative; padding-top: 22px; border-top: 2px solid var(--line); }
-    .tree-branch::before { position: absolute; top: 0; left: 50%; width: 2px; height: 16px; background: var(--line); content: ""; }
-    .branch-label { position: absolute; top: 2px; left: calc(50% + 8px); color: var(--green); font-size: 10px; font-weight: 900; letter-spacing: .08em; }
-    .branch-label.no { color: var(--red); }
-    .tree-rule { margin: 14px 0 0; padding: 9px 12px; border-left: 4px solid var(--blue); background: var(--blue-bg); font-weight: 700; text-align: center; }
+    .rules { margin-bottom: 16px; }
+    .rule-gates { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 13px; }
+    .rule-gate { padding: 10px 11px; border-radius: 8px; background: var(--blue-bg); }
+    .rule-gate code { display: block; margin-bottom: 3px; color: var(--blue); font-weight: 900; }
+    .rule-table .result-cell { width: 175px; background: var(--green-bg); color: var(--green); font-weight: 900; }
+    .rule-table .noise { background: var(--red-bg); color: var(--red); }
+    .rule-table .unknown { background: var(--slate-bg); color: #475569; }
+    .guardrail { margin: 12px 0 0; padding: 10px 12px; border-left: 4px solid var(--red); background: var(--red-bg); }
 
-    .buckets { margin-bottom: 16px; }
-    .buckets > p { margin: -8px 0 12px; color: var(--muted); }
     .bucket-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-    .bucket { padding: 11px; border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; background: #fff; }
+    .bucket { padding: 11px; border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 8px; background: var(--green-bg); }
     .bucket strong { display: block; margin-bottom: 4px; font-size: 13px; }
-    .bucket small { display: block; color: var(--muted); line-height: 1.35; }
-    .bucket.noise-bucket { border-left-color: var(--red); background: var(--red-bg); }
-    .bucket.unknown-bucket { border-left-color: #64748b; background: #f1f5f9; }
-    .bucket.cause-bucket { border-left-color: var(--green); background: var(--green-bg); }
+    .bucket small { color: var(--muted); }
+    .bucket.noise { border-left-color: var(--red); background: var(--red-bg); }
+    .bucket.unknown { border-left-color: #64748b; background: var(--slate-bg); }
 
-    .dry-run-primer { margin-bottom: 12px; padding: 16px 18px; border-left: 5px solid var(--blue); background: var(--blue-bg); }
-    .dry-run-primer h2 { margin-bottom: 5px; }
-    .dry-run-primer p { margin-bottom: 0; }
-    .dry-run-primer ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 22px; margin: 8px 0 0; }
-    .bucket-playbook { margin-bottom: 12px; border-left: 5px solid var(--green); }
-    .bucket-playbook.noise-playbook { border-left-color: var(--red); }
-    .bucket-playbook.unknown-playbook { border-left-color: #64748b; }
-    .playbook-head { display: flex; justify-content: space-between; gap: 18px; align-items: baseline; }
-    .playbook-head h2 { margin-bottom: 5px; }
-    .playbook-head p { max-width: 720px; margin-bottom: 12px; color: var(--muted); }
-    .bucket-number { flex: none; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-    .playbook-grid { display: grid; grid-template-columns: .9fr 1fr 1.45fr; gap: 10px; }
-    .playbook-cell { min-width: 0; padding: 12px; border-radius: 8px; background: #f8fafc; }
+    .primer { margin-bottom: 12px; padding: 16px 18px; border-left: 5px solid var(--blue); background: var(--blue-bg); }
+    .primer ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 20px; margin-top: 7px; }
+    .playbooks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .playbook { border-left: 5px solid var(--green); }
+    .playbook.noise { border-left-color: var(--red); }
+    .playbook.unknown { border-left-color: #64748b; }
+    .playbook-head { display: flex; justify-content: space-between; gap: 14px; }
+    .playbook-head p { margin-bottom: 10px; color: var(--muted); }
+    .bucket-number { flex: none; color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .playbook-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .playbook-cell { padding: 10px; border-radius: 8px; background: #f8fafc; }
+    .playbook-cell.full { grid-column: 1 / -1; }
     .playbook-cell h3 { color: var(--blue); }
-    .playbook-cell ul { margin-top: 5px; }
-    .decision-path { margin: 0; font-weight: 700; }
-    .decision-path span { color: var(--blue); }
-    .dry-run { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .dry-run th, .dry-run td { padding: 5px 7px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-    .dry-run th { color: var(--muted); font-weight: 700; }
-    .dry-run thead th { background: #e2e8f0; color: var(--ink); }
-    .dry-run tbody th { width: 25%; }
-    .result { margin: 9px 0 0; padding: 8px 10px; border-radius: 6px; background: var(--green-bg); color: var(--green); font-weight: 800; }
-    .noise-playbook .result { background: var(--red-bg); color: var(--red); }
-    .unknown-playbook .result { background: #e2e8f0; color: #334155; }
+    .decision-path { margin: 0; font-weight: 750; }
+    .dry-run th, .dry-run td { padding: 5px 6px; }
+    .result { margin: 8px 0 0; padding: 8px 9px; border-radius: 6px; background: var(--green-bg); color: var(--green); font-weight: 900; }
+    .playbook.noise .result { background: var(--red-bg); color: var(--red); }
+    .playbook.unknown .result { background: var(--slate-bg); color: #475569; }
 
-    .status { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .status-box { padding: 14px; border-radius: 8px; }
-    .done { background: var(--green-bg); }
-    .missing { background: var(--orange-bg); }
+    .support { display: grid; grid-template-columns: .8fr 1fr 1.2fr; gap: 14px; }
+    .status { display: grid; gap: 8px; }
+    .status-box { padding: 12px; border-radius: 8px; background: var(--green-bg); }
+    .status-box.missing { background: var(--orange-bg); }
     .status-box h3 { color: var(--green); }
-    .missing h3 { color: var(--orange); }
-    ul { margin: 8px 0 0; padding-left: 20px; }
-    li + li { margin-top: 5px; }
-
-    .support-grid { display: grid; grid-template-columns: .8fr .8fr 1.4fr; gap: 16px; }
-    .schemas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    pre { margin: 0; padding: 13px; overflow: auto; border-radius: 8px; background: #0f172a; color: #e2e8f0; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .validation { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .metric { padding: 10px 12px; border-radius: 8px; background: #f1f5f9; }
-    .guardrail { grid-column: 1 / -1; margin-top: 4px; padding: 12px; border-left: 5px solid var(--red); background: var(--red-bg); }
-    .next { grid-column: 1 / -1; padding: 12px; border-left: 5px solid var(--blue); background: var(--blue-bg); }
+    .status-box.missing h3 { color: var(--orange); }
+    ul { margin: 7px 0 0; padding-left: 19px; }
+    li + li { margin-top: 4px; }
 
     @media screen and (max-width: 900px) {
-      header, .opening, .support-grid { display: grid; grid-template-columns: 1fr; align-items: start; }
-      .target { min-width: 0; }
-      .requirements, .source-row, .output-row, .schemas, .validation, .rule-parameters, .state-rules, .data-model-grid, .data-contracts { grid-template-columns: 1fr; }
-      .data-block.wide { grid-column: auto; }
-      .flow-row, .group-rule-flow { grid-template-columns: 1fr; }
-      .arrow { height: 24px; transform: rotate(90deg); }
-      .cause-head { display: block; }
-      .jam-tree { min-width: 0; }
-      .tree-split, .tree-split.root { grid-template-columns: 1fr; }
-      .bucket-grid { grid-template-columns: 1fr; }
-      .playbook-head { display: block; }
-      .playbook-grid { grid-template-columns: 1fr; }
-      .dry-run-primer ul { grid-template-columns: 1fr; }
+      header, .opening, .polygon-layout, .support { grid-template-columns: 1fr; align-items: start; }
+      .requirements, .source-row, .output-row, .contracts, .rule-gates, .playbooks { grid-template-columns: 1fr; }
+      .equation { grid-template-columns: 1fr; }
+      .equation-op { transform: rotate(90deg); }
+      .gate-notes { grid-template-columns: 1fr; }
+      .flow-row { grid-template-columns: 1fr; }
+      .arrow { height: 22px; transform: rotate(90deg); }
+      .funnel-step { grid-template-columns: 48px 1fr; width: 100%; }
+      .funnel-step code { grid-column: 2; white-space: normal; }
+      .bucket-grid { grid-template-columns: 1fr 1fr; }
+      .primer ul { grid-template-columns: 1fr; }
     }
 
-    @page { size: 594mm 420mm; margin: 12mm; }
+    @media screen and (max-width: 560px) {
+      main { width: min(100% - 20px, 1240px); margin-top: 12px; }
+      h1 { font-size: 34px; }
+      .panel, .definition, .funnel, .polygon-panel { padding: 17px; }
+      .requirements, .bucket-grid, .playbook-grid { grid-template-columns: 1fr; }
+      .playbook-cell.full { grid-column: auto; }
+      .map { min-height: 310px; }
+      .legend { top: 40px; left: 15px; right: auto; }
+      .stage { grid-template-columns: 38px 1fr; }
+      .stage > span { width: 38px; height: 38px; }
+    }
+
+    @page { size: A3 landscape; margin: 10mm; }
     @media print {
-      body { background: #fff; font-size: 11px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      body { background: #fff; font-size: 10px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
       main { width: 100%; margin: 0; }
       h1 { font-size: 30px; }
-      h2 { margin-bottom: 8px; font-size: 17px; }
-      header { margin-bottom: 10px; padding-bottom: 10px; }
-      header p { font-size: 12px; }
-      .panel, .architecture { padding: 12px; }
-      .opening, .architecture, .cause-panel { margin-bottom: 10px; }
-      .buckets { margin-bottom: 10px; }
-      .box { padding: 8px; }
-      .join-note { margin-top: 6px; padding: 6px 8px; }
-      .down { height: 22px; font-size: 18px; }
-      .tree-node { padding: 6px 8px; }
-      .tree-split { gap: 8px; margin-top: 8px; }
-      .tree-branch { padding-top: 12px; }
-      .tree-branch::before { height: 8px; }
-      .branch-label { top: 0; font-size: 8px; }
-      .tree-rule { margin-top: 6px; padding: 6px 8px; }
-      .bucket { padding: 7px; }
-      .dry-run-primer, .bucket-playbook { margin-bottom: 8px; padding: 10px; break-inside: avoid-page; }
-      .playbook-head p { margin-bottom: 7px; }
-      .playbook-cell { padding: 8px; }
-      .dry-run th, .dry-run td { padding: 3px 5px; }
-      .result { margin-top: 5px; padding: 5px 7px; }
-      .rules-panel { margin-bottom: 10px; }
-      .data-model-panel { margin-bottom: 10px; }
-      .data-block { break-inside: avoid-page; }
-      .data-table th, .data-table td { padding: 4px 5px; }
-      .rule-parameter, .state-rule { padding: 7px 8px; }
-      .rule-table th, .rule-table td { padding: 5px 6px; }
-      .rule-table tr { break-inside: avoid-page; }
-      .status-box, pre, .metric { padding: 8px; }
-      .guardrail, .next { padding: 8px; }
+      h2 { font-size: 17px; }
+      .panel, .definition, .funnel, .polygon-panel { padding: 12px; box-shadow: none; }
+      .stage { margin: 14px 0 7px; break-after: avoid-page; }
+      .map { min-height: 280px; }
+      details > *:not(summary) { display: block !important; }
+      details summary { border-bottom: 1px solid var(--line); }
+      .playbook, .polygon-panel, .rules { break-inside: avoid-page; }
     }
   </style>
 </head>
@@ -233,750 +220,364 @@
   <main>
     <header>
       <div>
-        <h1>How we turn silent routers into outage decisions</h1>
-        <p>A router going silent is a warning, not proof of a shared outage. We compare failures across time, location, and network operators before we publish an incident.</p>
+        <h1>How device downtime becomes an attributed outage</h1>
+        <p>A device going down is raw evidence. The engine first exits CSP-wide failures, then groups the remaining spatially connected devices into fluid polygons for local attribution.</p>
       </div>
-      <div class="target"><strong>Goal: at least 80%</strong>of known outages found, with fewer false alarms.</div>
+      <div class="target"><strong>Two decision grains</strong>CSP × time window first. Fluid polygon for everything that remains.</div>
     </header>
 
     <div class="opening">
       <section class="panel problem">
         <h2>Problem</h2>
-        <p>A router may stop reporting because of power, connectivity, hardware, maintenance, or a data problem. We need enough supporting evidence to tell a real shared outage from an isolated failure.</p>
+        <p>Individual devices fail for many unrelated reasons. A CSP-wide failure should not create hundreds of false local polygons, while static cells create artificial borders for the failures that remain.</p>
       </section>
       <section class="panel">
         <h2>Requirements</h2>
         <div class="requirements">
-          <div class="requirement"><strong>Watch early</strong>Flag a possible issue after 15 minutes.</div>
-          <div class="requirement"><strong>Confirm carefully</strong>Treat 30 minutes of silence as usable evidence.</div>
-          <div class="requirement"><strong>Use the right place</strong>Use the router's location when it failed.</div>
-          <div class="requirement"><strong>Compare fairly</strong>Compare failed routers with active routers in that area.</div>
-          <div class="requirement"><strong>Keep the source ID</strong>Do not replace the existing outage ID.</div>
-          <div class="requirement"><strong>Admit uncertainty</strong>Return Unknown when comparison data is missing.</div>
+          <div class="requirement"><strong>Use the real source</strong><code>device_id</code> is the atomic evidence unit.</div>
+          <div class="requirement"><strong>Use coordinates</strong>Every active device needs one trusted location from the existing source flow.</div>
+          <div class="requirement"><strong>Filter CSP-wide first</strong>Exit a CSP when at least 80% of its active devices are concurrently down.</div>
+          <div class="requirement"><strong>Require a complete baseline</strong>Do not infer ISP / OLT when the active CSP denominator is incomplete.</div>
+          <div class="requirement"><strong>Grow the shape</strong>BFS joins spatial neighbors with overlapping downtime.</div>
+          <div class="requirement"><strong>Require scale</strong>A candidate polygon needs at least 10 eligible devices.</div>
+          <div class="requirement"><strong>Require impact</strong>At least 75% of eligible devices must be affected.</div>
+          <div class="requirement"><strong>Preserve evidence</strong>Keep every source outage ID and member device.</div>
         </div>
       </section>
     </div>
 
-    <section class="architecture" aria-labelledby="architecture-title">
+    <section class="definition" aria-labelledby="definition-title">
+      <h2 id="definition-title">Definition of an outage polygon</h2>
+      <p>After CSP-wide exits are removed, a fluid candidate becomes an outage polygon only when both the population and affected-share gates pass.</p>
+      <div class="equation" role="img" aria-label="At least ten eligible devices and at least seventy-five percent of them affected">
+        <div class="equation-part"><strong>Eligible devices ≥ 10</strong><small>Distinct remaining active devices whose coordinates fall inside the candidate geometry.</small></div>
+        <div class="equation-op">AND</div>
+        <div class="equation-part"><strong>Affected share ≥ 75%</strong><small>Affected share is distinct affected devices divided by eligible devices. The boundary is inclusive.</small></div>
+      </div>
+      <div class="gate-notes">
+        <div class="gate-note"><strong>10 is the polygon minimum</strong><small>9 eligible devices can never produce an outage polygon.</small></div>
+        <div class="gate-note"><strong>75% is inclusive</strong><small>8 of 10 is 80% and qualifies; 7 of 10 does not.</small></div>
+        <div class="gate-note"><strong>Concurrency supports grouping</strong><small>Downtime overlap joins related devices but does not replace the 75% gate.</small></div>
+      </div>
+    </section>
+
+    <section class="funnel" aria-labelledby="funnel-title">
+      <h2 id="funnel-title">The polygon attribution funnel</h2>
+      <p>Device rows from the existing source flow enter at the top. CSP-wide failures exit before any local geometry is built.</p>
+      <div class="funnel-steps">
+        <div class="funnel-step"><span>DEVICE</span><div><strong>Validate device evidence</strong><small>Resolve one active location, CSP, failure interval, and source outage membership per <code>device_id</code>.</small></div><code>raw device facts</code></div>
+        <div class="funnel-step"><span>CSP</span><div><strong>Filter ISP / OLT first</strong><small>For each CSP and evaluation time, exit when concurrently down active devices divided by all active CSP devices is at least 80%.</small></div><code>CSP-wide exit</code></div>
+        <div class="funnel-step"><span>BFS</span><div><strong>Grow polygons from what remains</strong><small>Exclude the exited CSP-window from both seeds and the eligible baseline, then connect spatial neighbors with overlapping downtime.</small></div><code>remaining devices → polygons</code></div>
+        <div class="funnel-step"><span>GATE</span><div><strong>Qualify each polygon</strong><small>Require at least 10 remaining eligible devices and at least 75% affected. Therefore 8 of 10 qualifies.</small></div><code>outage / noise</code></div>
+        <div class="funnel-step"><span>CAUSE</span><div><strong>Decide fibre, power, regional, or unknown</strong><small>Use the CSP states and shared timing inside the remaining polygon.</small></div><code>bucket + confidence</code></div>
+      </div>
+    </section>
+
+    <div class="stage"><span>1</span><div><h2>Build one top-down evidence path</h2><p>Raw devices feed the CSP-wide exit first; only the remaining devices feed fluid polygons.</p></div></div>
+
+    <section class="panel architecture" aria-labelledby="architecture-title">
       <h2 id="architecture-title">Technical architecture</h2>
-      <p>The arrows show the actual data path from source records to published results.</p>
-
-      <div class="lane-label">Source data</div>
+      <div class="lane">Sources</div>
       <div class="source-row">
-        <div class="box source"><strong>Outage members</strong><small><code>OUTAGE_MEMBER_V3</code><br>Outage ID, router ID, operator, first failure time</small></div>
-        <div class="box source"><strong>Router location history</strong><small>Which H3 area the router belonged to when it failed</small></div>
-        <div class="box source"><strong>Active router baseline</strong><small>How many active routers and operators existed in each area</small></div>
+        <div class="box source"><strong>Active customer devices</strong><small><code>CUSTOMER_V_2</code>: device ID, active status, Google address ID</small></div>
+        <div class="box source"><strong>Coordinates and CSP</strong><small><code>T_ADDRESS</code> supplies latitude/longitude; <code>T_DEVICE</code> supplies CSP ID</small></div>
+        <div class="box source"><strong>Outage membership</strong><small><code>OUTAGE_MEMBER_V3</code>: device ID, source outage ID, failure and recovery times</small></div>
       </div>
-
-      <div class="down" aria-hidden="true">↓</div>
-      <div class="lane-label">Processing</div>
       <div class="flow-row">
-        <div class="box process"><strong>1. Read failures</strong><small>Keep the source outage ID and find the earliest failure time.</small></div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box process"><strong>2. Add context</strong><small>Add the router's area and the active-router baseline for that time.</small></div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box process"><strong>3. Measure impact</strong><small>Count failed routers and calculate the failed share by operator and area.</small></div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box process"><strong>4. Group related failures</strong><small>Join operator outages that happened in the same time window.</small></div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box process"><strong>5. Apply rules</strong><small>Use area and operator comparisons to choose the likely failure domain.</small></div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box process"><strong>6. Grade the evidence</strong><small>Use comparison coverage and distance from thresholds.</small></div>
+        <div class="box process"><strong>1. Validate devices</strong><small>Reject missing or conflicting locations and CSP ownership.</small></div><div class="arrow">→</div>
+        <div class="box process"><strong>2. Apply CSP-wide filter</strong><small>Exit each CSP-window with at least 80% of active devices concurrently down.</small></div><div class="arrow">→</div>
+        <div class="box process"><strong>3. Run BFS on the remainder</strong><small>Derive adjacency from existing coordinates and build time-compatible components.</small></div><div class="arrow">→</div>
+        <div class="box process"><strong>4. Form and qualify geometry</strong><small>Build the hull, then require at least 10 eligible devices and 75% affected.</small></div><div class="arrow">→</div>
+        <div class="box process"><strong>5. Attribute locally</strong><small>Compare remaining CSP evidence for fibre, power, regional, or unknown.</small></div>
       </div>
-
-      <div class="down" aria-hidden="true">↓</div>
-      <div class="lane-label">Outputs</div>
+      <div class="lane">Outputs</div>
       <div class="output-row">
-        <div class="box output"><strong>Published result</strong><small><code>outage_id, bucket, confidence</code></small></div>
-        <div class="box output"><strong>Internal evidence</strong><small>Counts, shares, comparisons, and the rule that matched</small></div>
-        <div class="box output"><strong>Validation report</strong><small>False alarms, outages found, delay, coverage, and Unknown rate</small></div>
+        <div class="box output"><strong>CSP-wide exit</strong><small>CSP ID, time window, eligible and down devices, affected share</small></div>
+        <div class="box output"><strong>Outage polygon</strong><small>Polygon ID, geometry, member devices, eligible and affected counts</small></div>
+        <div class="box output"><strong>Attribution</strong><small>Bucket, confidence, compared CSPs, matched rule</small></div>
+        <div class="box output"><strong>Audit evidence</strong><small>Source outage IDs, timing, gates, adjacency and geometry versions</small></div>
       </div>
-      <div class="join-note"><strong>The two required joins:</strong> router ID → historical H3 area, then operator + H3 area → active-router baseline.</div>
+      <p class="join-note"><strong>One source flow:</strong> active <code>CUSTOMER_V_2</code> devices join to <code>T_ADDRESS</code> through <code>GOOGLE_ADDRESS_ID</code>, to <code>T_DEVICE</code> through <code>DEVICE_ID</code>, and to <code>OUTAGE_MEMBER_V3</code> through <code>DEVICE_ID</code>. CSP-wide exits keep their CSP-window key; polygons receive a derived ID. Both retain every source <code>outage_id</code>.</p>
     </section>
 
-    <section class="architecture" aria-labelledby="grouping-title">
-      <h2 id="grouping-title">H3 hex × CSP grouping and rule engine</h2>
-      <p>This is the explicit middle layer between the joined router records above and the cause tree below.</p>
-      <div class="group-rule-flow">
-        <div class="box source">
-          <strong>Router evidence</strong>
-          <small><code>outage_id</code>, router ID, <code>csp_id</code>, <code>h3_at_failure</code>, failure time, and eligibility</small>
+    <div class="stage"><span>2</span><div><h2>Grow fluid polygons after the CSP-wide exit</h2><p>BFS sees only the remaining device universe and follows spatially connected concurrent failures.</p></div></div>
+
+    <section class="polygon-panel" aria-labelledby="bfs-title">
+      <h2 id="bfs-title">Device graph → connected component → outage polygon</h2>
+      <p>Each remaining active device is a located node. Devices belonging to an exited CSP-window are excluded from both BFS seeds and the polygon denominator. Downtime overlap determines whether a spatial edge can be crossed.</p>
+      <div class="polygon-layout">
+        <div class="map">
+          <div class="map-title">Example fluid component</div>
+          <div class="legend"><span><i></i>queued</span><span><i class="green"></i>joined</span></div>
+          <div class="blob"></div>
+          <i class="node down seed"></i><i class="node joined"></i><i class="node joined"></i><i class="node down"></i><i class="node joined"></i><i class="node joined"></i><i class="node joined"></i><i class="node down"></i><i class="node joined"></i><i class="node"></i><i class="node"></i><i class="node"></i>
+          <div class="map-result"><strong>Polygon P-001</strong><br>16 eligible devices · 12 affected · 75% → qualifies</div>
         </div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box process">
-          <strong>1. Build one event row per hex and CSP</strong>
-          <small><code>h3_at_failure + csp_id + time_window</code><br>Count failed and eligible routers, then calculate failed share and event start/end.</small>
-        </div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box process">
-          <strong>2. Build both comparisons</strong>
-          <small><strong>Across CSPs:</strong> are multiple CSPs down in this H3 hex?<br><strong>Across hexes:</strong> is this CSP also down in its other H3 hexes?</small>
-        </div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="box output">
-          <strong>3. Apply ordered rules</strong>
-          <small>Use the JAM tree below. First matching rule wins; missing or conflicting comparisons return UNKNOWN.</small>
+        <div class="bfs">
+          <div class="bfs-step"><strong>Seed one remaining affected device</strong><small>Skip any device in an exited CSP-window or already visited in the current attribution window.</small></div>
+          <div class="bfs-step"><strong>Read spatial neighbors</strong><small>Derive the versioned adjacency graph from device latitude and longitude; no new source table is introduced.</small></div>
+          <div class="bfs-step"><strong>Cross only valid edges</strong><small>The neighbor is affected and its downtime interval overlaps the component's event interval.</small></div>
+          <div class="bfs-step"><strong>Close the component</strong><small>When the queue is empty, retain the visited devices and all source outage IDs.</small></div>
+          <div class="bfs-step"><strong>Create and test the polygon</strong><small>Build geometry, count remaining active devices inside it, calculate affected share, then require at least 10 devices and 75% affected.</small></div>
         </div>
       </div>
-      <div class="join-note"><strong>Example names:</strong> CSP Alpha is the provider being evaluated; CSP Beta is the other provider compared beside it in the same H3. They are placeholders, not real company names.<br><strong>Dry run:</strong> Alpha has 8/10 failed routers and Beta has 7/9 inside the same 30-minute window. Both are healthy in their other hexes. The same-hex comparison is YES, the cross-hex comparison is NO, so the rule engine returns <strong>AREA-SHARED</strong>.</div>
+      <div class="contracts">
+        <div class="contract"><strong>Fluid behavior</strong>The polygon can expand, split, contract, merge, or close as device states change.</div>
+        <div class="contract"><strong>Geometry safety</strong>Version the neighbor distance, hull method, and buffer. Validate them against denominator inflation.</div>
+        <div class="contract"><strong>Filter safety</strong>Keep exited devices for audit, but exclude them from both the downstream numerator and denominator.</div>
+      </div>
+      <pre>active_devices = active CUSTOMER_V_2 devices with CSP and location
+down_devices = active devices concurrently down at evaluation_time
+excluded_csp_windows = empty set
+
+FOR EACH csp_id IN active_devices:
+  csp_eligible = active_devices for csp_id
+  csp_down = down_devices for csp_id
+  csp_down_share = COUNT(csp_down) / COUNT(csp_eligible)
+
+  IF CSP_BASELINE_IS_COMPLETE(csp_id)
+     AND csp_down_share &gt;= 0.80:
+    EMIT ISP_OLT with csp_id, counts, share, time, and source outage IDs
+    ADD csp_id + evaluation_time TO excluded_csp_windows
+
+remaining_active_devices = active_devices outside excluded_csp_windows
+affected_nodes = down_devices outside excluded_csp_windows
+visited = empty set
+
+FOR EACH seed IN affected_nodes:
+  IF seed IN visited:
+    CONTINUE
+  queue = [seed]
+  component = empty set
+
+  WHILE queue is not empty:
+    current = POP_FRONT(queue)
+    IF current IN visited:
+      CONTINUE
+    ADD current TO visited AND component
+
+    FOR EACH neighbor IN SPATIAL_NEIGHBORS(current):
+      IF neighbor IN affected_nodes
+         AND DOWNTIME_OVERLAPS(neighbor, component)
+         AND neighbor NOT IN visited:
+        APPEND neighbor TO queue
+
+  geometry = CONCAVE_HULL(component coordinates)
+  eligible_devices = remaining active devices inside geometry
+  affected_devices = affected devices inside geometry
+  affected_share = affected_devices / eligible_devices
+
+  IF eligible_devices &gt;= 10 AND affected_share &gt;= 0.75:
+    EMIT outage_polygon
+  ELSE:
+    EMIT noise_candidate</pre>
     </section>
 
-    <section class="panel data-model-panel" aria-labelledby="data-model-title">
-      <h2 id="data-model-title">Data tables, columns, and calculation logic</h2>
-      <p>The full contract from verified source rows to rule inputs. Physical references are separated from logical derived tables so unresolved dependencies are visible.</p>
+    <div class="stage"><span>3</span><div><h2>Use explicit decision-grain tables</h2><p>CSP × time window is evaluated first; the remaining derived tables are polygon-level.</p></div></div>
 
-      <h3>Physical table reference registry</h3>
-      <div class="source-registry">
-        <table class="data-table">
-          <thead><tr><th>Reference</th><th>Status</th><th>Columns used here</th><th>Role and limitation</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><code>PROD_DB.BUSINESS_EFFICIENCY_ROUTER_OUTAGE_DETECTION_PUBLIC.OUTAGE_MEMBER_V3</code></td>
-              <td class="source-status verified">VERIFIED</td>
-              <td><code>OUTAGE_ID</code>, <code>DEVICE_ID</code>, <code>CSP_ID</code>, <code>MEMBER_FIRST_FAIL_AT_IST</code>, <code>_FIVETRAN_DELETED</code></td>
-              <td>Authoritative outage membership source for this design.</td>
-            </tr>
-            <tr>
-              <td><code>PROD_DB.PUBLIC.T_DEVICE</code></td>
-              <td class="source-status verified">VERIFIED COMPONENT</td>
-              <td><code>DEVICE_ID</code>, <code>LONG_NAS_ID</code>, <code>NASID</code>, <code>_FIVETRAN_DELETED</code></td>
-              <td>Audited one-to-one device-to-NASID bridge. It does not itself provide historical H3.</td>
-            </tr>
-            <tr>
-              <td><code>PROD_DB.DBT.ACTIVE_BASE</code></td>
-              <td class="source-status verified">VERIFIED COMPONENT</td>
-              <td><code>ACCOUNT_ID</code>, <code>NASID</code>, <code>LATITUDE</code>, <code>LONGITUDE</code>, <code>ACTIVE_STATE</code>, <code>LOCATION_START_TIME</code>, <code>PLAN_EXPIRY_TIME</code>, <code>SOURCE</code></td>
-              <td>Audited CUSTOMER_V2 service location and validity source used to derive H3. Current rows may not represent every historical location change.</td>
-            </tr>
-            <tr>
-              <td><code>PROD_DB.BUSINESS_EFFICIENCY_ROUTER_OUTAGE_DETECTION_PUBLIC.OUTAGE_V3</code></td>
-              <td class="source-status verified">VALIDATION ONLY</td>
-              <td><code>OUTAGE_ID</code>, <code>CSP_ID</code>, <code>OPENED_AT_IST</code></td>
-              <td>Can validate outage ownership. Do not use <code>OPENED_AT_IST</code> as failure start.</td>
-            </tr>
-            <tr>
-              <td><code>TBC</code> — Historical <code>device_id → h3_id</code> source</td>
-              <td class="source-status missing">TBC — TO BE CREATED</td>
-              <td><code>DEVICE_ID</code>, coordinates or <code>H3_ID</code>, <code>VALID_FROM</code>, <code>VALID_TO</code></td>
-              <td>New table to be created. ACTIVE_BASE + T_DEVICE is the audited candidate path, subject to historical-validity confirmation.</td>
-            </tr>
-            <tr>
-              <td><code>TBC</code> — Time-aware <code>CSP_ID × H3_ID</code> active baseline</td>
-              <td class="source-status missing">TBC — TO BE CREATED</td>
-              <td><code>CSP_ID</code>, <code>H3_ID</code>, <code>BASELINE_TIME</code>, <code>ELIGIBLE_DEVICES</code></td>
-              <td>New table to be created with the CSP-association join. Required before production bucketing.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <section class="panel" aria-labelledby="data-title">
+      <h2 id="data-title">Data contracts and calculation logic</h2>
 
-      <div class="data-model-grid">
-        <article class="data-block">
-          <h3>1. Source outage members <span>verified table</span></h3>
-          <div class="data-table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Column</th><th>Use or logic</th></tr></thead>
-              <tbody>
-                <tr><td><code>outage_id</code></td><td>Preserve as the published source outage ID.</td></tr>
-                <tr><td><code>device_id</code></td><td>Join to historical router location.</td></tr>
-                <tr><td><code>csp_id</code></td><td>Provider being evaluated. One source outage belongs to one CSP.</td></tr>
-                <tr><td><code>member_first_fail_at_ist</code></td><td>Router failure time.</td></tr>
-                <tr><td><code>outage_start_ist</code></td><td><code>MIN(member_first_fail_at_ist)</code> by <code>outage_id</code>.</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="data-note"><strong>Physical table:</strong> <code>OUTAGE_MEMBER_V3</code>.</p>
-          <pre class="pseudocode">FOR EACH source row:
-  IF _FIVETRAN_DELETED = TRUE:
-    SKIP row
-  ELSE:
-    KEEP outage_id, device_id, csp_id, failure_time
+      <details open>
+        <summary>1. Active device inventory <span>existing Customer V2 source flow</span></summary>
+        <div class="table-wrap"><table><thead><tr><th>Column</th><th>Rule</th></tr></thead><tbody>
+          <tr><td><code>device_id</code></td><td>From active <code>CUSTOMER_V_2</code>; stable atomic identifier with exactly one active record per run.</td></tr>
+          <tr><td><code>csp_id</code></td><td>From <code>T_DEVICE</code>; mandatory and single-valued.</td></tr>
+          <tr><td><code>latitude</code>, <code>longitude</code></td><td>From <code>T_ADDRESS</code> through <code>GOOGLE_ADDRESS_ID</code>; used for adjacency and point-in-polygon counting.</td></tr>
+          <tr><td><code>is_active</code></td><td>Derived from Customer V2 status; active devices form the CSP baseline and, after exclusions, the polygon denominator.</td></tr>
+        </tbody></table></div>
+      </details>
 
-FOR EACH outage_id:
-  outage_start = MIN(failure_time)</pre>
-        </article>
+      <details open>
+        <summary>2. Device downtime intervals <span>existing OUTAGE_MEMBER_V3 source</span></summary>
+        <div class="table-wrap"><table><thead><tr><th>Column</th><th>Rule</th></tr></thead><tbody>
+          <tr><td><code>outage_id</code></td><td>Preserve all source lineage attached to the device and final polygon.</td></tr>
+          <tr><td><code>device_id</code></td><td>Join directly to active <code>CUSTOMER_V_2.DEVICE_ID</code>.</td></tr>
+          <tr><td><code>member_first_fail_at_ist</code></td><td>Start of the device downtime interval.</td></tr>
+          <tr><td><code>recovered_at_ist</code></td><td>Available from the same <code>OUTAGE_MEMBER_V3</code> table when interval overlap is required.</td></tr>
+        </tbody></table></div>
+        <p class="data-note"><strong>No new source:</strong> use the existing <code>OUTAGE_MEMBER_V3</code> membership. Add its recovery timestamp to the export only when precise interval overlap is needed for BFS grouping.</p>
+      </details>
 
-        <article class="data-block">
-          <h3>2. Historical router location <span>TBC — table to be created</span></h3>
-          <div class="data-table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Column</th><th>Use or logic</th></tr></thead>
-              <tbody>
-                <tr><td><code>device_id</code></td><td>Join key from the outage member.</td></tr>
-                <tr><td><code>h3_id</code></td><td>Hex containing the router when it failed.</td></tr>
-                <tr><td><code>valid_from</code></td><td>Location effective start.</td></tr>
-                <tr><td><code>valid_to</code></td><td>Location effective end; may be open-ended.</td></tr>
-                <tr><td><code>mapping_status</code></td><td><code>VALID</code>, <code>MISSING</code>, or <code>AMBIGUOUS</code>.</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="data-note"><strong>Candidate references:</strong> bridge through <code>PROD_DB.PUBLIC.T_DEVICE</code> to <code>PROD_DB.DBT.ACTIVE_BASE</code>, then derive H3 from coordinates. Production use requires confirmation that the validity fields cover historical location changes.</p>
-          <pre class="pseudocode">candidates = T_DEVICE JOIN ACTIVE_BASE
-  ON unique device_id → NASID
+      <details>
+        <summary>3. CSP × time-window pre-filter <span>first decision grain</span></summary>
+        <div class="table-wrap"><table><thead><tr><th>Column</th><th>Rule</th></tr></thead><tbody>
+          <tr><td><code>csp_id</code>, <code>evaluation_time</code></td><td>Decision key for one concurrent CSP state check.</td></tr>
+          <tr><td><code>eligible_devices_csp</code></td><td>All active devices for the CSP in the defined analysis scope; never derive this denominator from outage rows.</td></tr>
+          <tr><td><code>down_devices_csp</code></td><td>Distinct eligible devices concurrently down at the evaluation time.</td></tr>
+          <tr><td><code>csp_down_share</code></td><td><code>down_devices_csp / eligible_devices_csp</code>; exit as ISP / OLT when at least 0.80.</td></tr>
+          <tr><td><code>baseline_complete</code></td><td>If false, do not infer ISP / OLT from an incomplete CSP denominator.</td></tr>
+        </tbody></table></div>
+        <p class="data-note"><strong>Exclusion rule:</strong> an exited CSP-window remains in the audit output but is removed from both the BFS input and the downstream eligible-device baseline.</p>
+      </details>
 
-IF exactly one candidate is valid at failure_time:
-  mapping_status = VALID
-  h3_id = H3(latitude, longitude)
-ELSE IF no candidate is valid:
-  mapping_status = MISSING
-  h3_id = NULL
-ELSE:
-  mapping_status = AMBIGUOUS
-  h3_id = NULL</pre>
-        </article>
+      <details>
+        <summary>4. Derived spatial-neighbor graph <span>calculated from existing coordinates</span></summary>
+        <div class="table-wrap"><table><thead><tr><th>Column</th><th>Rule</th></tr></thead><tbody>
+          <tr><td><code>device_id</code>, <code>neighbor_device_id</code></td><td>Undirected graph edge derived from device latitude and longitude.</td></tr>
+          <tr><td><code>distance_meters</code></td><td>Auditable physical separation.</td></tr>
+          <tr><td><code>adjacency_version</code></td><td>Records the selected neighbor-distance or topology rule.</td></tr>
+        </tbody></table></div>
+      </details>
 
-        <article class="data-block">
-          <h3>3. CSP–H3 active baseline <span>TBC — table to be created</span></h3>
-          <div class="data-table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Column</th><th>Use or logic</th></tr></thead>
-              <tbody>
-                <tr><td><code>csp_id</code>, <code>h3_id</code></td><td>Provider and hex comparison keys.</td></tr>
-                <tr><td><code>baseline_time</code></td><td>Snapshot or validity time covering the outage start.</td></tr>
-                <tr><td><code>eligible_devices</code></td><td>Active routers that could have reported in this CSP–H3.</td></tr>
-                <tr><td><code>eligible_h3_count</code></td><td>Comparable active H3s belonging to the CSP.</td></tr>
-                <tr><td><code>available_csp_count</code></td><td>CSPs available for comparison in the H3.</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="data-note"><strong>As-of join:</strong> <code>csp_id + h3_id + outage_start_ist</code>. A missing or zero denominator becomes UNKNOWN.</p>
-          <pre class="pseudocode">IF CSP association is missing:
-  baseline_status = UNKNOWN
-ELSE IF no baseline covers outage_start:
-  baseline_status = UNKNOWN
-ELSE:
-  eligible_devices = COUNT(active devices)
-  eligible_h3_count = COUNT(active H3s for CSP)
-  available_csp_count = COUNT(CSPs in H3)
+      <details>
+        <summary>5. Outage polygon fact <span>remaining-device decision grain</span></summary>
+        <div class="table-wrap"><table class="wide"><thead><tr><th>Column</th><th>Calculation</th><th>Purpose</th></tr></thead><tbody>
+          <tr><td><code>outage_polygon_id</code></td><td>Derived stable ID for one connected component and attribution window.</td><td>Primary key for every downstream decision.</td></tr>
+          <tr><td><code>geometry</code></td><td>Versioned concave hull or equivalent boundary around member devices.</td><td>Map display and eligible population lookup.</td></tr>
+          <tr><td><code>eligible_devices</code></td><td>Distinct remaining active devices inside the geometry after the CSP-wide exclusion.</td><td>Must be at least 10.</td></tr>
+          <tr><td><code>affected_devices</code></td><td>Distinct remaining devices with outage evidence inside the geometry and event window.</td><td>Impact numerator.</td></tr>
+          <tr><td><code>affected_share</code></td><td><code>affected_devices / eligible_devices</code>.</td><td>Must reach 75%; therefore 8/10 qualifies.</td></tr>
+          <tr><td><code>overlap_minutes</code></td><td>Shared interval among component device failures.</td><td>Grouping and evidence only; it does not replace the 75% gate.</td></tr>
+          <tr><td><code>member_device_ids</code></td><td>Devices discovered by BFS.</td><td>Reproducibility and investigation.</td></tr>
+          <tr><td><code>source_outage_ids</code></td><td>All source outages contributing members.</td><td>Lineage; never overwritten.</td></tr>
+        </tbody></table></div>
+      </details>
 
-  IF eligible_devices &lt;= 0:
-    baseline_status = UNKNOWN
-  ELSE:
-    baseline_status = VALID</pre>
-        </article>
+      <details>
+        <summary>6. CSP × polygon evidence <span>local attribution only</span></summary>
+        <div class="table-wrap"><table><thead><tr><th>Column</th><th>Use</th></tr></thead><tbody>
+          <tr><td><code>outage_polygon_id</code>, <code>csp_id</code></td><td>Comparison keys.</td></tr>
+          <tr><td><code>eligible_devices_by_csp</code></td><td>Active devices for the CSP inside the polygon.</td></tr>
+          <tr><td><code>affected_devices_by_csp</code></td><td>Affected devices for the CSP inside the polygon.</td></tr>
+          <tr><td><code>affected_share_by_csp</code></td><td>Determines which CSPs contribute the polygon impact.</td></tr>
+          <tr><td><code>csp_overlap_minutes</code></td><td>Shared timing evidence for that CSP inside the polygon.</td></tr>
+          <tr><td><code>compared_csp_count</code></td><td>Number of CSPs with eligible devices and usable state evidence.</td></tr>
+        </tbody></table></div>
+      </details>
 
-        <article class="data-block wide">
-          <h3>4. Derived CSP–H3 event <span>one row per outage_id + csp_id + h3_id</span></h3>
-          <div class="data-table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Column</th><th>Calculation</th><th>Why the rules need it</th></tr></thead>
-              <tbody>
-                <tr><td><code>outage_id</code>, <code>csp_id</code>, <code>h3_id</code></td><td>Grouping keys after the two as-of joins.</td><td>Retain source ownership and locate impact.</td></tr>
-                <tr><td><code>outage_start_ist</code></td><td>Earliest member failure for the source outage.</td><td>Match related source outages in time.</td></tr>
-                <tr><td><code>affected_devices</code></td><td><code>COUNT(DISTINCT device_id)</code>.</td><td>Minimum affected-device gate.</td></tr>
-                <tr><td><code>eligible_devices</code></td><td>Joined active baseline denominator.</td><td>Prevents small counts from being interpreted without context.</td></tr>
-                <tr><td><code>affected_share</code></td><td><code>affected_devices / eligible_devices</code>, only when denominator is positive.</td><td>Minimum affected-share gate.</td></tr>
-                <tr><td><code>csp_h3_state</code></td><td>DOWN when count and share both pass; UP when evidence is valid but DOWN is false; otherwise UNKNOWN.</td><td>Single input state used by every comparison rule.</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <pre class="pseudocode">FOR EACH outage_id + csp_id + h3_id:
-  IF mapping_status != VALID OR baseline_status != VALID:
-    csp_h3_state = UNKNOWN
-  ELSE:
-    affected_devices = COUNT(DISTINCT failed device_id)
-    affected_share = affected_devices / eligible_devices
-
-    IF affected_devices &gt;= MIN_AFFECTED_DEVICES
-       AND affected_share &gt;= MIN_AFFECTED_SHARE:
-      csp_h3_state = DOWN
-    ELSE:
-      csp_h3_state = UP</pre>
-        </article>
-
-        <article class="data-block wide">
-          <h3>5. Cross-outage comparison event <span>derived table</span></h3>
-          <div class="data-table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Column</th><th>Calculation</th><th>Rule question answered</th></tr></thead>
-              <tbody>
-                <tr><td><code>attribution_event_id</code></td><td>Derived ID grouping source outages whose starts fall inside <code>OVERLAP_WINDOW</code>.</td><td>Which source outages should be compared?</td></tr>
-                <tr><td><code>time_gap_minutes</code></td><td>Difference between the earliest and latest source-outage starts in the group.</td><td>Are the failures close enough in time?</td></tr>
-                <tr><td><code>down_csp_count</code></td><td>Distinct CSPs with <code>csp_h3_state = DOWN</code> in the same H3.</td><td>Are multiple CSPs down in this H3?</td></tr>
-                <tr><td><code>compared_csp_count</code></td><td>Distinct CSPs with DOWN or UP evidence in the H3.</td><td>Does a valid same-H3 comparison exist?</td></tr>
-                <tr><td><code>affected_h3_count</code></td><td>Distinct DOWN H3s for the CSP in the attribution event.</td><td>Is the CSP also down elsewhere?</td></tr>
-                <tr><td><code>eligible_h3_count</code></td><td>Comparable active H3s for the CSP.</td><td>What is the CSP-wide denominator?</td></tr>
-                <tr><td><code>affected_h3_share</code></td><td><code>affected_h3_count / eligible_h3_count</code>.</td><td>Is the CSP down across almost all H3s?</td></tr>
-                <tr><td><code>neighbor_csp_up</code></td><td>True when another CSP in the same H3 has fresh UP evidence.</td><td>Is this isolated to the affected CSP?</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="data-note"><strong>Identity rule:</strong> <code>attribution_event_id</code> groups comparisons only. Every original <code>outage_id</code> remains attached and is still the published ID.</p>
-          <pre class="pseudocode">GROUP source outages when time_gap &lt;= OVERLAP_WINDOW
-
-FOR EACH attribution_event_id + h3_id:
-  down_csp_count = COUNT(DISTINCT CSP WHERE state = DOWN)
-  compared_csp_count = COUNT(DISTINCT CSP WHERE state IN (DOWN, UP))
-
-FOR EACH attribution_event_id + csp_id:
-  affected_h3_count = COUNT(DISTINCT H3 WHERE state = DOWN)
-  IF eligible_h3_count &gt; 0:
-    affected_h3_share = affected_h3_count / eligible_h3_count
-  ELSE:
-    affected_h3_share = NULL
-
-neighbor_csp_up = EXISTS(other CSP in same H3 WHERE state = UP)</pre>
-        </article>
-
-        <article class="data-block wide">
-          <h3>6. Rule-input matrix <span>columns feeding each decision</span></h3>
-          <div class="data-table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Rule question</th><th>Columns used</th></tr></thead>
-              <tbody>
-                <tr><td>Enough evidence?</td><td><code>mapping_status</code>, <code>eligible_devices</code>, <code>affected_devices</code>, <code>affected_share</code>, and data freshness.</td></tr>
-                <tr><td>Multiple CSPs down in this H3?</td><td><code>down_csp_count</code>, <code>compared_csp_count</code>, and <code>time_gap_minutes</code>.</td></tr>
-                <tr><td>Same CSPs down in other H3s?</td><td><code>affected_h3_count</code> and the CSP–H3 states inside the attribution event.</td></tr>
-                <tr><td>CSP down almost everywhere?</td><td><code>affected_h3_count</code>, <code>eligible_h3_count</code>, and <code>affected_h3_share</code>.</td></tr>
-                <tr><td>Neighboring CSPs up?</td><td><code>neighbor_csp_up</code>, compared CSP–H3 states, and comparison freshness.</td></tr>
-                <tr><td>Confidence grade?</td><td>Comparison coverage, denominator size, mapping quality, and distance from the selected thresholds.</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <pre class="pseudocode">IF valid evidence exists AND no CSP–H3 is DOWN:
-  bucket = NOISE
-ELSE IF down_csp_count &gt;= 2:
-  IF other-H3 comparison is missing:
-    bucket = UNKNOWN
-  ELSE IF the same CSPs are DOWN in other H3s:
-    bucket = REGIONAL
-  ELSE:
-    bucket = AREA-SHARED
-ELSE IF affected_h3_share is missing:
-  bucket = UNKNOWN
-ELSE IF affected_h3_share &gt;= ALMOST_ALL_H3_SHARE:
-  bucket = ISP / OLT
-ELSE IF neighboring-CSP comparison is missing:
-  bucket = UNKNOWN
-ELSE IF neighbor_csp_up = TRUE:
-  bucket = LOCAL OPERATOR FAULT
-ELSE:
-  bucket = UNKNOWN</pre>
-        </article>
-
-        <article class="data-block wide">
-          <h3>7. Output contracts <span>published minimum plus internal audit evidence</span></h3>
-          <div class="data-contracts">
-            <pre>PUBLISHED
-outage_id
-bucket
-confidence</pre>
-            <pre>INTERNAL AUDIT
-outage_id
-attribution_event_id
+      <details>
+        <summary>7. Output contract <span>CSP-window or polygon result plus audit evidence</span></summary>
+        <pre>CSP_WIDE_PUBLISHED
 csp_id
-h3_id
-outage_start_ist
-affected_devices
-eligible_devices
-affected_share
-affected_h3_count
-eligible_h3_count
-compared_csp_count
-rule_matched
+evaluation_time
+eligible_devices_csp
+down_devices_csp
+csp_down_share
+baseline_complete
+source_outage_ids
+bucket = ISP_OLT
+
+POLYGON_PUBLISHED
+outage_polygon_id
+geometry
 bucket
-confidence</pre>
-          </div>
-          <pre class="pseudocode">IF required comparisons are complete
-   AND matched values are clearly beyond thresholds:
-  confidence = HIGH
-ELSE:
-  confidence = MEDIUM
+confidence
 
-FOR EACH source outage_id in attribution_event_id:
-  PUBLISH outage_id, bucket, confidence
-  RETAIN all evidence columns and rule_matched</pre>
-        </article>
-      </div>
+AUDIT
+decision_key
+source_outage_ids
+member_device_ids
+eligible_devices
+affected_devices
+affected_share
+overlap_minutes
+compared_csp_count
+matched_rule
+adjacency_version
+geometry_version</pre>
+      </details>
     </section>
 
-    <section class="panel rules-panel" aria-labelledby="rules-title">
-      <h2 id="rules-title">Exact ordered rule contract</h2>
-      <p>The engine is deterministic. Only these four values are tuned; the rule order and fallback are fixed.</p>
+    <div class="stage"><span>4</span><div><h2>Apply the CSP-wide rule before polygon rules</h2><p>The top-down contract prevents a CSP-wide event from fragmenting into misleading local polygons.</p></div></div>
 
-      <div class="rule-parameters" aria-label="Rule parameters">
-        <div class="rule-parameter"><code>MIN_AFFECTED_DEVICES</code><span>Minimum failed routers in one CSP–H3.</span></div>
-        <div class="rule-parameter"><code>MIN_AFFECTED_SHARE</code><span>Minimum failed ÷ eligible routers in that CSP–H3.</span></div>
-        <div class="rule-parameter"><code>OVERLAP_WINDOW</code><span>Maximum time gap for grouping source outages into one comparison event.</span></div>
-        <div class="rule-parameter"><code>ALMOST_ALL_H3_SHARE</code><span>Minimum affected H3s ÷ eligible H3s for a CSP-wide event.</span></div>
+    <section class="panel rules" aria-labelledby="rules-title">
+      <h2 id="rules-title">Ordered outage attribution contract</h2>
+      <div class="rule-gates">
+        <div class="rule-gate"><code>CSP_WIDE_DEVICE_SHARE = 0.80</code>First ISP / OLT filter against the complete active CSP baseline.</div>
+        <div class="rule-gate"><code>MIN_ELIGIBLE_DEVICES = 10</code>Inclusive polygon population gate.</div>
+        <div class="rule-gate"><code>MIN_AFFECTED_SHARE = 0.75</code>Inclusive polygon impact gate.</div>
+        <div class="rule-gate"><code>EDGE_OVERLAP &gt; 0</code>Grouping evidence only; not a qualification alternative.</div>
       </div>
-
-      <h3>Stage A — assign a state to every CSP–H3 row</h3>
-      <div class="state-rules">
-        <div class="state-rule down-state"><strong>DOWN</strong>Historical H3 and denominator exist, affected devices meet <em>both</em> minimums: count and share.</div>
-        <div class="state-rule"><strong>UP</strong>Historical H3 and denominator exist, observations are usable, and the DOWN condition is false.</div>
-        <div class="state-rule unknown-state"><strong>UNKNOWN</strong>Historical H3 is missing or ambiguous, the eligible denominator is missing, or the observation cannot be compared safely.</div>
-      </div>
-
-      <h3>Stage B — apply these outage rules from top to bottom</h3>
-      <div class="rule-table-wrap">
-        <table class="rule-table">
-          <thead>
-            <tr><th scope="col">Priority</th><th scope="col">IF</th><th scope="col">THEN</th><th scope="col">Evidence used and retained</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">1</th>
-              <td>Valid evidence exists, but no CSP–H3 row passes the DOWN count-and-share gate.</td>
-              <td class="rule-result noise-result">NOISE</td>
-              <td>Affected devices, eligible devices, affected share, H3 mapping status, and the failed gate.</td>
-            </tr>
-            <tr>
-              <th scope="row">2</th>
-              <td>Within <code>OVERLAP_WINDOW</code>, two or more CSPs are DOWN in the same H3, and those CSPs are not DOWN in their other H3s.</td>
-              <td class="rule-result">AREA-SHARED</td>
-              <td>Compared CSP count, shared H3, overlap times, and each CSP's other-H3 states.</td>
-            </tr>
-            <tr>
-              <th scope="row">3</th>
-              <td>Within <code>OVERLAP_WINDOW</code>, two or more CSPs are DOWN in the same H3, and those CSPs are also DOWN in other H3s.</td>
-              <td class="rule-result">REGIONAL</td>
-              <td>Compared CSP count, affected H3s by CSP, eligible H3s by CSP, and overlap times.</td>
-            </tr>
-            <tr>
-              <th scope="row">4</th>
-              <td>The same-H3 multi-CSP test is false, and one CSP is DOWN in at least <code>ALMOST_ALL_H3_SHARE</code> of its eligible H3s.</td>
-              <td class="rule-result">ISP / OLT</td>
-              <td>Affected H3 count, eligible H3 count, affected-H3 share, and same-H3 CSP comparison.</td>
-            </tr>
-            <tr>
-              <th scope="row">5</th>
-              <td>The same-H3 multi-CSP test is false, the CSP-wide test is false, and at least one neighboring CSP in the same H3 is observed UP.</td>
-              <td class="rule-result">LOCAL OPERATOR FAULT</td>
-              <td>Affected CSP state, its other-H3 states, neighboring CSP states, and comparison freshness.</td>
-            </tr>
-            <tr>
-              <th scope="row">6</th>
-              <td>A required comparison is missing, or the observed pattern is conflicting or ambiguous. This includes a single-zone CSP or a single-CSP H3.</td>
-              <td class="rule-result unknown-result">UNKNOWN</td>
-              <td>The missing comparison and all available evidence; never replace it with a guessed cause.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="rule-order-note">First matching rule wins. Preserve every source <code>outage_id</code>; <code>attribution_event_id</code> only groups overlapping outages for comparison. The bucket is a likely failure domain, not proof of a power, fibre, ISP, or OLT root cause.</p>
+      <div class="table-wrap"><table class="rule-table wide"><thead><tr><th>Order</th><th>If</th><th>Then</th><th>Evidence retained</th></tr></thead><tbody>
+        <tr><th>0</th><td>At least 80% of one CSP's complete active-device baseline is concurrently down at the evaluation time.</td><td class="result-cell">ISP / OLT</td><td>CSP ID, evaluation time, eligible and down device IDs, share, and source outages. Exclude the CSP-window before BFS.</td></tr>
+        <tr><th>1</th><td>A remaining candidate has fewer than 10 eligible devices, or its affected share is below 75%.</td><td class="result-cell noise">NOISE</td><td>Eligible count, affected count, affected share, and failed gate.</td></tr>
+        <tr><th>2</th><td>Two or more comparable CSPs are affected together inside one remaining polygon.</td><td class="result-cell">POWER / SHARED AREA</td><td>CSP-level device counts, shares, and overlapping intervals inside the polygon.</td></tr>
+        <tr><th>3</th><td>The same multi-CSP pattern appears across multiple separated outage polygons in one event.</td><td class="result-cell">REGIONAL</td><td>Polygon IDs, geometries, compared CSPs, and event timing.</td></tr>
+        <tr><th>4</th><td>One CSP is affected inside the polygon and at least one other eligible CSP is observed healthy there.</td><td class="result-cell">FIBRE / LOCAL CSP</td><td>Affected CSP evidence and healthy same-polygon comparison CSP evidence.</td></tr>
+        <tr><th>5</th><td>The polygon qualifies but the required cross-CSP comparison is missing or conflicting.</td><td class="result-cell unknown">UNKNOWN</td><td>Available evidence and the exact missing comparison.</td></tr>
+      </tbody></table></div>
+      <p class="guardrail"><strong>Safety boundary:</strong> `FIBRE`, `POWER`, and `ISP / OLT` are inferred failure domains. Confirm the physical cause with OLT alarms, power telemetry, tickets, or field evidence.</p>
     </section>
 
-    <section class="panel cause-panel" aria-labelledby="cause-title">
-      <div class="cause-head">
-        <h2 id="cause-title">Core outage cause attribution tree</h2>
-        <a href="../Outage%20Cause%20Attribution%20Tree.jam">Source: Outage Cause Attribution Tree.jam</a>
-      </div>
-      <div class="jam-tree" role="img" aria-label="Decision tree from the JAM file for assigning an outage cause bucket">
-        <div class="tree-node"><strong>Enough evidence?</strong></div>
-        <div class="tree-split root">
-          <div class="tree-branch">
-            <span class="branch-label no">NO</span>
-            <div class="tree-node terminal noise"><strong>NOISE</strong></div>
-          </div>
-          <div class="tree-branch">
-            <span class="branch-label">YES</span>
-            <div class="tree-node"><strong>Multiple operators down in the same zone?</strong></div>
-            <div class="tree-split">
-              <div class="tree-branch">
-                <span class="branch-label">YES</span>
-                <div class="tree-node"><strong>Are those operators also down in their other zones?</strong></div>
-                <div class="tree-split">
-                  <div class="tree-branch">
-                    <span class="branch-label no">NO</span>
-                    <div class="tree-node terminal"><strong>AREA-SHARED</strong><small>Likely power or shared physical dependency</small></div>
-                  </div>
-                  <div class="tree-branch">
-                    <span class="branch-label">YES</span>
-                    <div class="tree-node terminal"><strong>REGIONAL</strong><small>Wide-area upstream or regional event</small></div>
-                  </div>
-                </div>
-              </div>
-              <div class="tree-branch">
-                <span class="branch-label no">NO</span>
-                <div class="tree-node"><strong>Is the affected operator down across all or almost all of its zones?</strong></div>
-                <div class="tree-split">
-                  <div class="tree-branch">
-                    <span class="branch-label">YES</span>
-                    <div class="tree-node terminal"><strong>ISP / OLT</strong><small>Operator-wide upstream or OLT failure</small></div>
-                  </div>
-                  <div class="tree-branch">
-                    <span class="branch-label no">NO</span>
-                    <div class="tree-node"><strong>Are neighboring operators in this zone up?</strong></div>
-                    <div class="tree-split">
-                      <div class="tree-branch">
-                        <span class="branch-label">YES</span>
-                        <div class="tree-node terminal"><strong>LOCAL OPERATOR FAULT</strong><small>Fibre cut, local switch, node power issue, etc.</small></div>
-                      </div>
-                      <div class="tree-branch">
-                        <span class="branch-label no">NO COMPARISON</span>
-                        <div class="tree-node terminal unknown"><strong>UNKNOWN</strong><small>Single-zone operator or single-operator zone</small></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <p class="tree-rule">First matching rule wins. Any ambiguous pattern falls into UNKNOWN.</p>
-      </div>
-    </section>
-
-    <section class="panel buckets" aria-labelledby="buckets-title">
-      <h2 id="buckets-title">Published cause buckets</h2>
-      <p>Every outage receives one bucket. Confidence is reported separately.</p>
+    <section class="panel" aria-labelledby="bucket-title">
+      <h2 id="bucket-title">Published outage outcomes</h2>
       <div class="bucket-grid">
-        <div class="bucket noise-bucket"><strong>NOISE</strong><small>There is not enough evidence to call this a shared outage.</small></div>
-        <div class="bucket cause-bucket"><strong>AREA-SHARED</strong><small>Several operators are down in one zone, but not across their other zones.</small></div>
-        <div class="bucket cause-bucket"><strong>REGIONAL</strong><small>Several operators are down in the same zone and across other zones.</small></div>
-        <div class="bucket cause-bucket"><strong>ISP / OLT</strong><small>One operator is down across all or almost all of its zones.</small></div>
-        <div class="bucket cause-bucket"><strong>LOCAL OPERATOR FAULT</strong><small>One operator is down in a zone while neighboring operators remain up.</small></div>
-        <div class="bucket unknown-bucket"><strong>UNKNOWN</strong><small>The required comparison is missing or the pattern is ambiguous.</small></div>
+        <div class="bucket"><strong>ISP / OLT</strong><small>At least 80% of a CSP's complete active-device baseline is concurrently down; exit before BFS.</small></div>
+        <div class="bucket noise"><strong>NOISE</strong><small>A remaining candidate fails the polygon population or impact gate.</small></div>
+        <div class="bucket"><strong>POWER / SHARED AREA</strong><small>Multiple CSPs fail together inside one polygon.</small></div>
+        <div class="bucket"><strong>REGIONAL</strong><small>The shared multi-CSP pattern spans separated polygons.</small></div>
+        <div class="bucket"><strong>FIBRE / LOCAL CSP</strong><small>One CSP fails while another CSP is healthy inside the polygon.</small></div>
+        <div class="bucket unknown"><strong>UNKNOWN</strong><small>The polygon is real but a required attribution comparison is absent.</small></div>
       </div>
     </section>
 
-    <section class="dry-run-primer" aria-labelledby="dry-run-title">
-      <h2 id="dry-run-title">How to read the bucket dry runs</h2>
+    <div class="stage"><span>5</span><div><h2>Dry-run every outage outcome</h2><p>The first run is CSP × time window; the remaining runs use fluid polygons.</p></div></div>
+
+    <section class="primer" aria-labelledby="primer-title">
+      <h2 id="primer-title">How to read the dry runs</h2>
       <ul>
+        <li><strong>CSP-wide first:</strong> concurrently down devices divided by the CSP's complete active-device baseline.</li>
+        <li><strong>Exit:</strong> a CSP at or above 80% is published as ISP / OLT before BFS.</li>
+        <li><strong>Eligible polygon devices:</strong> remaining active devices inside the candidate geometry.</li>
+        <li><strong>Affected polygon devices:</strong> remaining devices with downtime evidence in the attribution window.</li>
+        <li><strong>Grouping:</strong> overlapping downtime lets BFS join spatial-neighbor devices.</li>
+        <li><strong>Qualification:</strong> at least 10 eligible devices and at least 75% affected.</li>
         <li><strong>CSP Alpha:</strong> provider being evaluated.</li>
-        <li><strong>CSP Beta:</strong> comparison provider in the same H3.</li>
-        <li><strong>Names:</strong> examples, not real companies.</li>
-        <li><strong>Minimum evidence:</strong> 5 failed routers and 70% affected.</li>
-        <li><strong>Time match:</strong> failures overlap within 30 minutes.</li>
-        <li><strong>Almost all zones:</strong> at least 80%. Validate all values before production.</li>
+        <li><strong>CSP Beta:</strong> comparison provider in the same analysis scope or remaining polygon.</li>
       </ul>
     </section>
 
-    <section class="panel bucket-playbook noise-playbook" aria-labelledby="noise-playbook-title">
-      <div class="playbook-head">
-        <div>
-          <h2 id="noise-playbook-title">NOISE</h2>
-          <p>Use this when the first evidence gate fails. Do not make a shared-outage or physical-cause claim.</p>
-        </div>
-        <span class="bucket-number">Bucket 1 of 6</span>
-      </div>
-      <div class="playbook-grid">
-        <div class="playbook-cell">
-          <h3>Decision path</h3>
-          <p class="decision-path">Enough evidence? <span>NO</span> → NOISE</p>
-        </div>
-        <div class="playbook-cell">
-          <h3>Evidence needed</h3>
-          <ul><li>Failed-router count</li><li>Eligible-router count</li><li>Failure duration and data freshness</li></ul>
-        </div>
-        <div class="playbook-cell">
-          <h3>Dry run</h3>
-          <table class="dry-run">
-            <thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead>
-            <tbody>
-              <tr><th>Same H3</th><td>2/20 failed = 10%</td><td>Not evaluated</td></tr>
-              <tr><th>Duration</th><td>30 minutes</td><td>Not required</td></tr>
-              <tr><th>Rule test</th><td>Fails both trial minimums: 5 routers and 70%</td><td>Rule stops before CSP comparison</td></tr>
-            </tbody>
-          </table>
-          <p class="result">Result: NOISE · confidence HIGH for rejection · no cause claim</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel bucket-playbook" aria-labelledby="area-playbook-title">
-      <div class="playbook-head">
-        <div>
-          <h2 id="area-playbook-title">AREA-SHARED</h2>
-          <p>Use this when several operators fail together in one zone, while those operators remain healthy in their other zones.</p>
-        </div>
-        <span class="bucket-number">Bucket 2 of 6</span>
-      </div>
-      <div class="playbook-grid">
-        <div class="playbook-cell">
-          <h3>Decision path</h3>
-          <p class="decision-path">Enough evidence? <span>YES</span> → multiple operators down here? <span>YES</span> → also down elsewhere? <span>NO</span> → AREA-SHARED</p>
-        </div>
-        <div class="playbook-cell">
-          <h3>Evidence needed</h3>
-          <ul><li>Two or more operators in the same zone</li><li>Overlapping failure times</li><li>Healthy comparison zones for each operator</li></ul>
-        </div>
-        <div class="playbook-cell">
-          <h3>Dry run</h3>
-          <table class="dry-run">
-            <thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead>
-            <tbody>
-              <tr><th>Same H3</th><td>8/10 = 80% · DOWN</td><td>7/9 = 78% · DOWN</td></tr>
-              <tr><th>Other H3s</th><td>Below 20% · UP</td><td>Below 20% · UP</td></tr>
-              <tr><th>Timing</th><td>18-minute overlap</td><td>18-minute overlap</td></tr>
-            </tbody>
-          </table>
-          <p class="result">Result: AREA-SHARED · confidence HIGH</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel bucket-playbook" aria-labelledby="regional-playbook-title">
-      <div class="playbook-head">
-        <div>
-          <h2 id="regional-playbook-title">REGIONAL</h2>
-          <p>Use this when several operators fail together in one zone and the same operators are also failing across other zones.</p>
-        </div>
-        <span class="bucket-number">Bucket 3 of 6</span>
-      </div>
-      <div class="playbook-grid">
-        <div class="playbook-cell">
-          <h3>Decision path</h3>
-          <p class="decision-path">Enough evidence? <span>YES</span> → multiple operators down here? <span>YES</span> → also down elsewhere? <span>YES</span> → REGIONAL</p>
-        </div>
-        <div class="playbook-cell">
-          <h3>Evidence needed</h3>
-          <ul><li>Two or more operators in the same zone</li><li>Overlapping failure times</li><li>Cross-zone impact for the same operators</li></ul>
-        </div>
-        <div class="playbook-cell">
-          <h3>Dry run</h3>
-          <table class="dry-run">
-            <thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead>
-            <tbody>
-              <tr><th>Same H3</th><td>8/10 = 80% · DOWN</td><td>7/9 = 78% · DOWN</td></tr>
-              <tr><th>Across H3s</th><td>4/5 H3s = 80% · DOWN</td><td>5/6 H3s = 83% · DOWN</td></tr>
-              <tr><th>Timing</th><td>Inside 30-minute window</td><td>Inside 30-minute window</td></tr>
-            </tbody>
-          </table>
-          <p class="result">Result: REGIONAL · confidence HIGH</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel bucket-playbook" aria-labelledby="isp-playbook-title">
-      <div class="playbook-head">
-        <div>
-          <h2 id="isp-playbook-title">ISP / OLT</h2>
-          <p>Use this when one operator is affected across all or almost all of its zones, but the same-zone multi-operator test is false.</p>
-        </div>
-        <span class="bucket-number">Bucket 4 of 6</span>
-      </div>
-      <div class="playbook-grid">
-        <div class="playbook-cell">
-          <h3>Decision path</h3>
-          <p class="decision-path">Enough evidence? <span>YES</span> → multiple operators down here? <span>NO</span> → operator down almost everywhere? <span>YES</span> → ISP / OLT</p>
-        </div>
-        <div class="playbook-cell">
-          <h3>Evidence needed</h3>
-          <ul><li>Affected and eligible routers by zone</li><li>At least two comparable zones</li><li>Other operators available to rule out a shared-zone event</li></ul>
-        </div>
-        <div class="playbook-cell">
-          <h3>Dry run</h3>
-          <table class="dry-run">
-            <thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead>
-            <tbody>
-              <tr><th>Same H3</th><td>8/10 = 80% · DOWN</td><td>0/12 = 0% · UP</td></tr>
-              <tr><th>Across H3s</th><td>9/10 H3s = 90% · DOWN</td><td>0/8 H3s = 0% · UP</td></tr>
-              <tr><th>Rule test</th><td>Above 80% “almost all” value</td><td>Rules out a shared-H3 event</td></tr>
-            </tbody>
-          </table>
-          <p class="result">Result: ISP / OLT · confidence HIGH</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel bucket-playbook" aria-labelledby="local-playbook-title">
-      <div class="playbook-head">
-        <div>
-          <h2 id="local-playbook-title">LOCAL OPERATOR FAULT</h2>
-          <p>Use this when one operator fails in a zone, is not failing across almost all of its zones, and neighboring operators remain up.</p>
-        </div>
-        <span class="bucket-number">Bucket 5 of 6</span>
-      </div>
-      <div class="playbook-grid">
-        <div class="playbook-cell">
-          <h3>Decision path</h3>
-          <p class="decision-path">Enough evidence? <span>YES</span> → multiple operators down here? <span>NO</span> → operator down almost everywhere? <span>NO</span> → neighbors up? <span>YES</span> → LOCAL OPERATOR FAULT</p>
-        </div>
-        <div class="playbook-cell">
-          <h3>Evidence needed</h3>
-          <ul><li>Affected operator in the target zone</li><li>Its health in other zones</li><li>Fresh, healthy observations from neighboring operators</li></ul>
-        </div>
-        <div class="playbook-cell">
-          <h3>Dry run</h3>
-          <table class="dry-run">
-            <thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead>
-            <tbody>
-              <tr><th>Same H3</th><td>8/10 = 80% · DOWN</td><td>0/12 = 0% · UP</td></tr>
-              <tr><th>Across H3s</th><td>1/10 H3s = 10% · not CSP-wide</td><td>0/8 H3s = 0% · UP</td></tr>
-              <tr><th>Rule test</th><td>Only Alpha is down here</td><td>Healthy comparison is available</td></tr>
-            </tbody>
-          </table>
-          <p class="result">Result: LOCAL OPERATOR FAULT · confidence HIGH</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel bucket-playbook unknown-playbook" aria-labelledby="unknown-playbook-title">
-      <div class="playbook-head">
-        <div>
-          <h2 id="unknown-playbook-title">UNKNOWN</h2>
-          <p>Use this when the failure is real enough to examine, but the comparison needed to identify its failure domain is absent or ambiguous.</p>
-        </div>
-        <span class="bucket-number">Bucket 6 of 6</span>
-      </div>
-      <div class="playbook-grid">
-        <div class="playbook-cell">
-          <h3>Decision path</h3>
-          <p class="decision-path">Enough evidence? <span>YES</span> → required operator or zone comparison missing → UNKNOWN</p>
-        </div>
-        <div class="playbook-cell">
-          <h3>Evidence needed</h3>
-          <ul><li>The available outage evidence</li><li>An explicit record of the missing comparison</li><li>No guess about the physical cause</li></ul>
-        </div>
-        <div class="playbook-cell">
-          <h3>Dry run</h3>
-          <table class="dry-run">
-            <thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead>
-            <tbody>
-              <tr><th>Same H3</th><td>8/10 = 80% · DOWN</td><td>Unavailable</td></tr>
-              <tr><th>Across H3s</th><td>No second monitored H3</td><td>Unavailable</td></tr>
-              <tr><th>Rule test</th><td>Outage evidence exists</td><td>Required comparison is missing</td></tr>
-            </tbody>
-          </table>
-          <p class="result">Result: UNKNOWN · confidence MEDIUM · reason: comparison unavailable</p>
-        </div>
-      </div>
-    </section>
-
-    <div class="support-grid">
-      <section class="panel">
-        <h2>Current status</h2>
-        <div class="status">
-          <div class="status-box done">
-            <h3>Done</h3>
-            <ul><li>Outage-member extract</li><li>Source data checks</li><li>Historical H3 evidence map</li><li>Cause rules documented</li></ul>
-          </div>
-          <div class="status-box missing">
-            <h3>Still needed</h3>
-            <ul><li>Router location history join</li><li>Active-router baselines</li><li>Cross-operator event grouping</li><li>Classifier and validation</li></ul>
-          </div>
-        </div>
+    <div class="playbooks">
+      <section class="panel playbook">
+        <div class="playbook-head"><div><h2>ISP / OLT</h2><p>A CSP-wide device pattern exits before any polygon is built.</p></div><span class="bucket-number">Outcome 1 of 6</span></div>
+        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">Alpha: 82/100 concurrently down = 82% → ISP / OLT → exclude Alpha-window before BFS</p></div><div class="playbook-cell"><h3>Why</h3><p>Alpha's complete CSP baseline is available and its device-down share exceeds the 80% first-stage gate.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead><tbody><tr><td>Eligible active devices</td><td>100</td><td>80</td></tr><tr><td>Concurrently down devices</td><td>82</td><td>12</td></tr><tr><td>CSP down share</td><td>82% → exit</td><td>15% → retain</td></tr></tbody></table><p class="result">Result: ISP / OLT for CSP Alpha · CSP Beta remains eligible for BFS</p></div></div>
       </section>
 
-      <section class="panel">
-        <h2>Data contracts</h2>
-        <div class="schemas">
-          <pre>INPUT
-outage_id
-device_id
-csp_id
-first_failure_time
-h3_at_failure
-eligible_devices</pre>
-          <pre>OUTPUT
-outage_id
-bucket
-confidence</pre>
-        </div>
+      <section class="panel playbook noise">
+        <div class="playbook-head"><div><h2>NOISE</h2><p>The remaining candidate footprint does not qualify as an outage polygon.</p></div><span class="bucket-number">Outcome 2 of 6</span></div>
+        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">All CSPs pass through the first filter → 10 eligible → 7 affected = 70% → NOISE</p></div><div class="playbook-cell"><h3>Why</h3><p>The remaining population gate passes, but the affected-share gate fails.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Measure</th><th>Polygon</th></tr></thead><tbody><tr><td>CSP-wide filter</td><td>No CSP reached 80%</td></tr><tr><td>Eligible devices</td><td>10</td></tr><tr><td>Affected devices</td><td>7</td></tr><tr><td>Affected share</td><td>7/10 = 70%</td></tr></tbody></table><p class="result">Result: NOISE</p></div></div>
       </section>
 
-      <section class="panel">
-        <h2>Validation and safety</h2>
-        <div class="validation">
-          <div class="metric"><strong>Tune only four values</strong><br><span class="muted">Minimum failed routers, failed share, time window, and “almost all areas.”</span></div>
-          <div class="metric"><strong>Measure the result</strong><br><span class="muted">Outages found, false alarms, delay, data coverage, and Unknown rate.</span></div>
-          <div class="guardrail"><strong>Guardrail:</strong> the bucket identifies the likely failure domain. Claims such as a power cut, fibre cut, or OLT failure need separate operational evidence.</div>
-          <div class="next"><strong>Next step:</strong> join the outage members to historical router locations and active-router baselines. Then produce one row per source outage: <code>outage_id, bucket, confidence</code>.</div>
-        </div>
+      <section class="panel playbook">
+        <div class="playbook-head"><div><h2>POWER / SHARED AREA</h2><p>Multiple CSPs fail concurrently inside one outage polygon.</p></div><span class="bucket-number">Outcome 3 of 6</span></div>
+        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">Both CSPs remain after the first filter → 10 eligible → 8 affected = 80% → POWER / SHARED AREA</p></div><div class="playbook-cell"><h3>Why</h3><p>The polygon qualifies and the overlapping local failure crosses CSP boundaries.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead><tbody><tr><td>CSP-wide filter</td><td>Retained: below 80% globally</td><td>Retained: below 80% globally</td></tr><tr><td>Eligible devices</td><td>5</td><td>5</td></tr><tr><td>Affected devices</td><td>4</td><td>4</td></tr><tr><td>Polygon total</td><td colspan="2">8/10 affected = 80%</td></tr></tbody></table><p class="result">Result: POWER / SHARED AREA</p></div></div>
+      </section>
+
+      <section class="panel playbook">
+        <div class="playbook-head"><div><h2>REGIONAL</h2><p>The same multi-CSP signature exists across separated outage polygons.</p></div><span class="bucket-number">Outcome 4 of 6</span></div>
+        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">Both CSPs remain → P-101 qualifies → P-208 qualifies → same CSP pair and time window → REGIONAL</p></div><div class="playbook-cell"><h3>Why</h3><p>Both separated polygons pass the device gates and share the same multi-CSP signature.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Polygon</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead><tbody><tr><td>CSP-wide filter</td><td>Retained</td><td>Retained</td></tr><tr><td>P-101</td><td>4/5 affected</td><td>4/5 affected</td></tr><tr><td>P-208</td><td>5/6 affected</td><td>4/6 affected</td></tr><tr><td>Spatial relation</td><td colspan="2">Separated polygons; overlapping event time</td></tr></tbody></table><p class="result">Result: REGIONAL</p></div></div>
+      </section>
+
+      <section class="panel playbook">
+        <div class="playbook-head"><div><h2>FIBRE / LOCAL CSP</h2><p>One CSP fails while another CSP remains healthy inside the polygon.</p></div><span class="bucket-number">Outcome 5 of 6</span></div>
+        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">Alpha remains globally → 10 eligible → 8 affected = 80% → Alpha affected, Beta healthy → FIBRE / LOCAL CSP</p></div><div class="playbook-cell"><h3>Why</h3><p>Alpha is below 80% across its full CSP baseline but locally affected, while Beta provides a healthy polygon comparison.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead><tbody><tr><td>CSP-wide filter</td><td>Retained: below 80% globally</td><td>Retained: healthy</td></tr><tr><td>Eligible devices</td><td>8</td><td>2</td></tr><tr><td>Affected devices</td><td>8</td><td>0</td></tr><tr><td>Polygon total</td><td colspan="2">8/10 affected = 80%</td></tr></tbody></table><p class="result">Result: FIBRE / LOCAL CSP</p></div></div>
+      </section>
+
+      <section class="panel playbook unknown">
+        <div class="playbook-head"><div><h2>UNKNOWN</h2><p>The polygon qualifies but cannot support a failure-domain comparison.</p></div><span class="bucket-number">Outcome 6 of 6</span></div>
+        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">Alpha remains globally → 10 eligible → 8 affected = 80% → no comparison CSP → UNKNOWN</p></div><div class="playbook-cell"><h3>Why</h3><p>The outage polygon is real, but the local cross-CSP attribution evidence is incomplete.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead><tbody><tr><td>CSP-wide filter</td><td>Retained: below 80% globally</td><td>Unavailable</td></tr><tr><td>Eligible devices</td><td>10</td><td>Unavailable</td></tr><tr><td>Affected devices</td><td>8</td><td>Unavailable</td></tr><tr><td>Comparison</td><td>Polygon qualifies</td><td>Missing</td></tr></tbody></table><p class="result">Result: UNKNOWN · reason: same-polygon CSP comparison unavailable</p></div></div>
       </section>
     </div>
+
+    <div class="stage"><span>6</span><div><h2>Implement and validate the new grain</h2><p>The current classifier is not yet polygon-native; these are the concrete changes required.</p></div></div>
+
+    <div class="support">
+      <section class="panel"><h2>Decided</h2><div class="status"><div class="status-box"><h3>Top-down contract</h3><ul><li>Device is the raw grain</li><li>CSP × time window is checked first</li><li>At least 80% CSP devices down exits as ISP / OLT</li><li>Exited CSP-window devices are excluded from both downstream counts</li><li>Remaining polygons require 10 devices and 75% affected</li></ul></div></div></section>
+      <section class="panel"><h2>Required implementation</h2><div class="status"><div class="status-box missing"><h3>Still needed</h3><ul><li>Calculate complete CSP active baselines before BFS</li><li>Export recovery intervals from the same <code>OUTAGE_MEMBER_V3</code> source when overlap grouping needs them</li><li>Validate device coordinates from <code>T_ADDRESS</code></li><li>Build and version spatial adjacency</li><li>Implement BFS and geometry creation on the remaining devices</li></ul></div></div></section>
+      <section class="panel"><h2>Validation and safety</h2><ul><li>Back-test the 80% CSP-device, 10-device polygon, and 75% affected-share boundaries.</li><li>Measure CSP baseline completeness and local events masked by the CSP-wide exit.</li><li>Measure recall, false polygons, detection delay, split/merge stability, and Unknown rate.</li><li>Keep exact source outage and member device lineage for both decision grains.</li><li>Do not claim confirmed fibre, power, or OLT cause without operational evidence.</li></ul><p class="guardrail"><strong>Next step:</strong> update the data export and Python engine to publish CSP-window exits and polygon results separately. Until that happens, this HTML is the target design, not a description of current runtime behavior.</p></section>
+    </div>
   </main>
+
+  <script>
+    let printDetails = [];
+    addEventListener("beforeprint", () => {
+      printDetails = [...document.querySelectorAll("details")].map((item) => [item, item.open]);
+      printDetails.forEach(([item]) => { item.open = true; });
+    });
+    addEventListener("afterprint", () => {
+      printDetails.forEach(([item, wasOpen]) => { item.open = wasOpen; });
+    });
+  </script>
 </body>
 </html>
