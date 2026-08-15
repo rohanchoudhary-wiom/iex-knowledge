@@ -14,5 +14,4 @@ class RuleContext:
     cross_h3_comparison: bool
     shared_down_elsewhere: bool
     cause_confidence: str
-    noise_confidence: str
     thresholds: Thresholds

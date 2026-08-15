@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Labs Outage Triage — Data Ask</title>
+  <style>
+    :root {
+      --ink: #14213d;
+      --muted: #5f6b7a;
+      --line: #d9e0e8;
+      --paper: #ffffff;
+      --page: #f3f6f9;
+      --blue: #1458d4;
+      --blue-soft: #eaf1ff;
+      --teal: #087f71;
+      --teal-soft: #e7f7f3;
+      --amber: #a85d00;
+      --amber-soft: #fff4dc;
+      --red: #b42318;
+      --red-soft: #ffebe9;
+      --radius: 14px;
+      --shadow: 0 12px 32px rgba(20, 33, 61, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      background: var(--page);
+      font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: inherit; }
+    .skip-link {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 20;
+      padding: 9px 12px;
+      border-radius: 8px;
+      color: white;
+      background: var(--blue);
+      transform: translateY(-150%);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .hero {
+      padding: 52px 24px 38px;
+      color: white;
+      background:
+        radial-gradient(circle at 82% 16%, rgba(48, 180, 160, .35), transparent 26rem),
+        linear-gradient(135deg, #0e1f42 0%, #153d77 58%, #0f766e 130%);
+    }
+    .hero-inner, .layout { width: min(1180px, 100%); margin: 0 auto; }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: #bcd2ff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    h1 { max-width: 760px; margin: 0; font-size: clamp(34px, 5vw, 58px); line-height: 1.06; letter-spacing: -.035em; }
+    .hero-copy { max-width: 760px; margin: 18px 0 0; color: #dce7fa; font-size: 17px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid rgba(255,255,255,.23);
+      border-radius: 999px;
+      background: rgba(255,255,255,.09);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .contract {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      align-items: center;
+      width: min(1180px, calc(100% - 32px));
+      margin: -18px auto 24px;
+      padding: 20px 24px;
+      border: 1px solid #c7d7f4;
+      border-radius: var(--radius);
+      background: white;
+      box-shadow: var(--shadow);
+    }
+    .contract-label { color: var(--blue); font-size: 12px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+    .lock { padding: 8px 11px; border-radius: 9px; color: #fff; background: var(--blue); font-weight: 800; white-space: nowrap; }
+    .identity-path { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 12px; align-items: center; margin-top: 8px; }
+    .identity-node { display: flex; gap: 10px; align-items: center; min-width: 0; padding: 10px 12px; border: 1px solid #c7d7f4; border-radius: 10px; background: var(--blue-soft); }
+    .identity-node:last-child { border-color: #a8d8cd; background: var(--teal-soft); }
+    .identity-glyph { display: grid; flex: 0 0 32px; width: 32px; height: 32px; place-items: center; border-radius: 9px; color: white; background: var(--blue); font-size: 11px; font-weight: 900; }
+    .identity-node:last-child .identity-glyph { background: var(--teal); }
+    .identity-node small { display: block; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .identity-node code { display: block; font-size: 14px; font-weight: 850; }
+    .identity-arrow { color: var(--blue); font-size: 22px; font-weight: 900; }
+
+    .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; padding: 0 16px 56px; }
+    nav {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+    }
+    nav strong { display: block; padding: 7px 10px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+    nav a { display: block; padding: 7px 10px; border-radius: 7px; color: var(--muted); text-decoration: none; }
+    nav a:hover, nav a:focus-visible { color: var(--blue); background: var(--blue-soft); outline: none; }
+
+    main { min-width: 0; }
+    section, details {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: 0 5px 18px rgba(20, 33, 61, .045);
+    }
+    section { padding: 24px; }
+    h2 { margin: 0 0 14px; font-size: 24px; line-height: 1.25; letter-spacing: -.015em; }
+    h3 { margin: 22px 0 9px; font-size: 17px; }
+    p { margin: 9px 0; }
+    ul { margin: 10px 0; padding-left: 21px; }
+    li + li { margin-top: 5px; }
+    code { overflow-wrap: anywhere; font: .92em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    p, li, th, td { overflow-wrap: anywhere; }
+
+    .note { padding: 13px 15px; border-left: 4px solid var(--amber); border-radius: 8px; background: var(--amber-soft); }
+    .info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .limit { border-left-color: var(--red); background: var(--red-soft); }
+
+    .taxonomy { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+    .cause { min-height: 118px; padding: 15px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfe; }
+    .cause code { color: var(--blue); font-weight: 850; }
+    .cause p { margin-bottom: 0; color: var(--muted); font-size: 13px; }
+    .cause.unknown code { color: var(--red); }
+
+    .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; counter-reset: step; }
+    .flow div { position: relative; min-height: 116px; padding: 42px 14px 14px; border-radius: 11px; background: var(--blue-soft); }
+    .flow div::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      display: grid;
+      width: 23px;
+      height: 23px;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .flow div:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; top: 50%; right: -16px; color: var(--blue); font-size: 18px; font-weight: 900; transform: translateY(-50%); }
+
+    details { overflow: hidden; }
+    summary { padding: 18px 22px; cursor: pointer; font-size: 18px; font-weight: 800; }
+    summary:hover, summary:focus-visible { color: var(--blue); background: #fafcff; outline: none; }
+    details[open] summary { border-bottom: 1px solid var(--line); }
+    .details-body { padding: 20px 22px; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #344054; background: #f7f9fc; font-size: 12px; letter-spacing: .03em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+
+    figure { margin: 16px 0; }
+    figcaption { margin-top: 9px; color: var(--muted); font-size: 12px; }
+    .polygon-figure { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(180px, .7fr); overflow: hidden; border: 1px solid #b9d9d2; border-radius: 13px; background: #f8fbff; }
+    .outage-map { min-width: 0; padding: 16px; border-right: 1px solid #b9d9d2; background: linear-gradient(135deg, #f8fbff, #eff8f5); }
+    .outage-map svg { display: block; width: 100%; height: auto; }
+    .polygon-shape { fill: rgba(20, 88, 212, .13); stroke: var(--blue); stroke-width: 4; stroke-linejoin: round; }
+    .member { fill: var(--red); stroke: white; stroke-width: 4; }
+    .healthy-device { fill: var(--teal); stroke: white; stroke-width: 4; }
+    .map-callout { fill: white; stroke: #c7d7f4; }
+    .map-label { fill: var(--ink); font: 700 12px ui-sans-serif, system-ui, sans-serif; }
+    .map-label.muted { fill: var(--muted); font-size: 11px; }
+    .polygon-summary { display: grid; align-content: center; gap: 9px; padding: 18px; background: white; }
+    .polygon-summary h3 { margin: 0 0 3px; color: var(--blue); }
+    .map-stat { padding: 10px 12px; border-radius: 9px; background: var(--blue-soft); }
+    .map-stat strong { display: block; font-size: 22px; line-height: 1.1; }
+    .map-stat span { color: var(--muted); font-size: 12px; }
+    .map-stat.healthy { background: var(--teal-soft); }
+    .map-key { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .map-key span::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; background: var(--red); }
+    .map-key .healthy-key::before { background: var(--teal); }
+
+    .evidence-visual { display: grid; grid-template-columns: minmax(0, 1fr) 34px 210px; gap: 12px; align-items: stretch; }
+    .signal-groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .signal-group { padding: 14px; border: 1px solid #c9e7df; border-radius: 11px; background: var(--teal-soft); }
+    .signal-group:nth-child(2) { border-color: #c7d7f4; background: var(--blue-soft); }
+    .signal-group:nth-child(3) { border-color: #eed4a3; background: var(--amber-soft); }
+    .signal-group h3 { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; color: var(--teal); }
+    .signal-group:nth-child(2) h3 { color: var(--blue); }
+    .signal-group:nth-child(3) h3 { color: var(--amber); }
+    .signal-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; color: white; background: var(--teal); font-size: 0; }
+    .signal-group:nth-child(2) .signal-icon { background: var(--blue); }
+    .signal-group:nth-child(3) .signal-icon { background: var(--amber); }
+    .signal-icon::after { content: attr(data-icon); color: white; font-size: 14px; }
+    .signal-group ul { margin: 0; padding-left: 18px; color: #344054; font-size: 12px; }
+    .evidence-arrow { display: grid; place-items: center; color: var(--blue); font-size: 26px; font-weight: 900; }
+    .verdict-card { display: grid; align-content: center; padding: 16px; border-radius: 11px; color: white; background: linear-gradient(145deg, #153d77, #0f766e); }
+    .verdict-card small { color: #cfe3ef; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .verdict-card strong { margin: 4px 0 10px; font-size: 20px; line-height: 1.2; }
+    .verdict-card code { display: block; margin-top: 5px; padding: 5px 7px; border-radius: 6px; background: rgba(255,255,255,.12); font-size: 11px; }
+
+    .revision-figure { padding: 18px; border: 1px solid #c7d7f4; border-radius: 12px; background: linear-gradient(135deg, #f8fbff, #fff); }
+    .revision-key { display: inline-flex; gap: 8px; align-items: center; margin-bottom: 18px; padding: 7px 10px; border-radius: 999px; color: var(--blue); background: var(--blue-soft); font-weight: 800; }
+    .revision-key::before { content: "↻"; font-size: 17px; }
+    .revision-timeline { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 0; list-style: none; }
+    .revision-timeline li { position: relative; margin: 0; padding: 25px 12px 0 0; border-top: 3px solid #adc7ee; }
+    .revision-timeline li::before { content: ""; position: absolute; top: -8px; left: 0; width: 13px; height: 13px; border: 3px solid white; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 2px var(--blue); }
+    .revision-timeline li:last-child { border-top-color: var(--teal); }
+    .revision-timeline li:last-child::before { background: var(--teal); box-shadow: 0 0 0 2px var(--teal); }
+    .revision-timeline strong, .revision-timeline code { display: block; }
+    .revision-timeline span { color: var(--muted); font-size: 12px; }
+
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { position: relative; padding-left: 26px; }
+    .checklist li::before { content: "✓"; position: absolute; left: 0; color: var(--teal); font-weight: 900; }
+
+    footer { padding: 26px 16px 40px; color: var(--muted); text-align: center; font-size: 13px; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; display: flex; gap: 4px; overflow-x: auto; }
+      nav strong { display: none; }
+      nav a { white-space: nowrap; }
+      .taxonomy { grid-template-columns: repeat(2, 1fr); }
+      .flow { grid-template-columns: repeat(3, 1fr); }
+      .flow div::after { display: none; }
+      .evidence-visual { grid-template-columns: 1fr; }
+      .evidence-arrow { transform: rotate(90deg); }
+    }
+    @media (max-width: 600px) {
+      .hero { padding: 40px 18px 32px; }
+      .contract { grid-template-columns: 1fr; }
+      .lock { width: fit-content; }
+      .identity-path { grid-template-columns: 1fr; }
+      .identity-arrow { justify-self: center; line-height: .7; transform: rotate(90deg); }
+      section { padding: 19px; }
+      .taxonomy, .flow, .signal-groups { grid-template-columns: 1fr; }
+      .polygon-figure { grid-template-columns: 1fr; }
+      .outage-map { border-right: 0; border-bottom: 1px solid #b9d9d2; }
+      .revision-timeline { grid-template-columns: 1fr; gap: 0; }
+      .revision-timeline li { padding: 0 0 18px 26px; border-top: 0; border-left: 3px solid #adc7ee; }
+      .revision-timeline li::before { top: 1px; left: -8px; }
+      .revision-timeline li:last-child { border-left-color: var(--teal); }
+    }
+    @media print {
+      body { background: white; font-size: 11px; }
+      .hero { padding: 24px; color: var(--ink); background: white; }
+      .hero-copy, .eyebrow { color: var(--muted); }
+      .badge { border-color: var(--line); }
+      .contract { margin: 0 auto 14px; box-shadow: none; }
+      .layout { display: block; padding: 0; }
+      nav { display: none; }
+      section, details { break-inside: avoid; box-shadow: none; }
+      details > .details-body { display: block; }
+      summary { list-style: none; }
+      footer { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">IX · Labs · TFF interface</p>
+      <h1>Outage triage data ask</h1>
+      <p class="hero-copy">Detection defines the outage. Labs builds its single polygon, enriches the evidence, and publishes the latest likely cause and confidence.</p>
+      <div class="meta" aria-label="Document status">
+        <span class="badge">Status: Draft</span>
+        <span class="badge">Owner: IX</span>
+        <span class="badge">Scope: Triage v1</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="contract" aria-label="Locked identity contract">
+    <span class="lock">LOCKED</span>
+    <div>
+      <span class="contract-label">Identity and output grain</span>
+      <div class="identity-path">
+        <span class="identity-node"><span class="identity-glyph">ID</span><span><small>Source truth</small><code>one outage_id</code></span></span>
+        <span class="identity-arrow" aria-hidden="true">→</span>
+        <span class="identity-node"><span class="identity-glyph">◇</span><span><small>Geometry</small><code>one polygon</code></span></span>
+        <span class="identity-arrow" aria-hidden="true">→</span>
+        <span class="identity-node"><span class="identity-glyph">✓</span><span><small>Published result</small><code>one attribution</code></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav aria-label="Page sections">
+      <strong>Contents</strong>
+      <a href="#contract">Contract</a>
+      <a href="#taxonomy">Taxonomy</a>
+      <a href="#flow">Flow</a>
+      <a href="#inputs">Inputs</a>
+      <a href="#polygon">Polygon</a>
+      <a href="#evidence">Evidence</a>
+      <a href="#revisions">Revisions</a>
+      <a href="#output">Output</a>
+      <a href="#validation">Validation</a>
+      <a href="#limits">Limits</a>
+      <a href="#handoff">Handoff</a>
+    </nav>
+
+    <main id="content">
+      <section id="contract">
+        <h2>1. Contract</h2>
+        <p>Detection decides what is down and freezes the affected devices. Labs explains the likely cause and confidence. Communication decides what to tell each audience.</p>
+        <ul>
+          <li><code>outage_id</code> and its device list are source truth.</li>
+          <li>The one-outage-to-one-polygon mapping is a locked requirement.</li>
+          <li>Labs never changes membership, splits an outage, merges outage IDs, or creates another published ID.</li>
+          <li>Labs may compare overlapping or concurrent outages internally, but overlap is evidence only.</li>
+          <li>Overlap never creates another outage, polygon, output row, or attribution.</li>
+          <li>Attribution is always published against the original <code>outage_id</code>.</li>
+          <li>The result may be revised while open and finalised after restoration.</li>
+        </ul>
+        <p class="note"><strong>Detection v0 assumption:</strong> a device was silent for 15 minutes, had a SUCCESS in the previous 30 minutes, and joined devices that went silent inside the same 30-minute onset window. A changed rule requires a versioned interface update.</p>
+      </section>
+
+      <section id="taxonomy">
+        <h2>2. Triage output taxonomy</h2>
+        <p>Each outage has exactly one current root cause.</p>
+        <div class="taxonomy">
+          <article class="cause"><code>CSP_SIDE</code><p>Upstream ISP or OLT-shaped failure, merged for v1.</p></article>
+          <article class="cause"><code>ACCESS_FIBRE</code><p>Local access-fibre failure.</p></article>
+          <article class="cause"><code>PREMISE_POWER</code><p>Power or shared electrical failure.</p></article>
+          <article class="cause unknown"><code>UNKNOWN</code><p>Evidence cannot support a reliable cause.</p></article>
+        </div>
+        <p><code>CSP_SIDE</code> retains a nullable <code>sub_cause</code> for a future ISP/OLT split.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Separate dimension</th><th>Values</th></tr></thead>
+            <tbody>
+              <tr><td><code>spatial_extent</code></td><td>LOCAL, SUB_REGIONAL, REGIONAL</td></tr>
+              <tr><td><code>event_pattern</code></td><td>UNPLANNED, SCHEDULED, RECURRING, UNKNOWN</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note info">Regional and sub-regional describe scale, not root cause.</p>
+      </section>
+
+      <section id="flow">
+        <h2>3. Labs flow</h2>
+        <div class="flow">
+          <div>Load one outage and its frozen devices.</div>
+          <div>Build exactly one polygon and calculate area.</div>
+          <div>Enrich from portfolio-wide history.</div>
+          <div>Compare concurrent outages internally.</div>
+          <div>Calculate cause, confidence, and restoration class.</div>
+          <div>Upsert one versioned result per <code>outage_id</code>.</div>
+        </div>
+      </section>
+
+      <details id="inputs" open>
+        <summary>4. Required inputs</summary>
+        <div class="details-body">
+          <h3>Detection GET stays narrow</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>outage_id</code></td><td>Source and output key</td></tr>
+                <tr><td><code>csp_id</code></td><td>CSP owning the outage</td></tr>
+                <tr><td><code>device_list</code></td><td>Frozen affected devices</td></tr>
+                <tr><td><code>outage_trigger_time</code></td><td>Detection time</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Detection sends only the bounded affected set. Labs derives comparison data independently.</p>
+
+          <h3>Portfolio-wide data available to Labs</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Required fields or use</th></tr></thead>
+              <tbody>
+                <tr><td>Ping history</td><td><code>device_id</code>, server timestamp, reachable/unreachable state</td></tr>
+                <tr><td>Device registry</td><td>Event-time latitude, longitude, and CSP mapping</td></tr>
+                <tr><td>Concurrent outages</td><td>All open IDs, CSPs, device lists, and trigger times</td></tr>
+                <tr><td>Recovery state</td><td>Device reachability after onset and restoration time</td></tr>
+                <tr><td>ISD tickets/calls</td><td>Timestamp, device/customer link, and reason text where available</td></tr>
+                <tr><td>CSP confirmation</td><td>Neutral confirmed-cause response linked to <code>outage_id</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">Historical coordinates and mappings are required for backfills. Missing, stale, or merely non-member devices are not healthy.</p>
+        </div>
+      </details>
+
+      <section id="polygon">
+        <h2>5. Polygon and device counts</h2>
+        <figure>
+          <div class="polygon-figure">
+            <div class="outage-map">
+              <svg viewBox="0 0 560 300" role="img" aria-labelledby="polygon-title polygon-desc">
+                <title id="polygon-title">One polygon built from all located outage members</title>
+                <desc id="polygon-desc">Eight red affected devices, including one distant member, define one blue polygon. Three green healthy comparison devices sit inside it. One affected device without a usable location remains in the frozen count but not the geometry.</desc>
+                <defs>
+                  <pattern id="map-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                    <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#dbe5ef" stroke-width="1"/>
+                  </pattern>
+                </defs>
+                <rect width="560" height="300" rx="12" fill="url(#map-grid)"/>
+                <path class="polygon-shape" d="M46 120 C78 50 186 35 292 70 L480 48 C523 43 540 78 510 109 L344 135 C328 207 266 252 158 241 C70 232 18 185 46 120 Z"/>
+                <circle class="member" cx="86" cy="132" r="10"/>
+                <circle class="member" cx="137" cy="88" r="10"/>
+                <circle class="member" cx="188" cy="146" r="10"/>
+                <circle class="member" cx="238" cy="101" r="10"/>
+                <circle class="member" cx="279" cy="169" r="10"/>
+                <circle class="member" cx="216" cy="213" r="10"/>
+                <circle class="member" cx="119" cy="193" r="10"/>
+                <circle class="member" cx="493" cy="77" r="10"/>
+                <circle class="healthy-device" cx="155" cy="132" r="8"/>
+                <circle class="healthy-device" cx="249" cy="185" r="8"/>
+                <circle class="healthy-device" cx="304" cy="117" r="8"/>
+                <path d="M430 28 L479 64" fill="none" stroke="#5f6b7a" stroke-width="1.5"/>
+                <rect class="map-callout" x="355" y="9" width="111" height="30" rx="8"/>
+                <text class="map-label" x="367" y="28">distant member</text>
+                <rect class="map-callout" x="22" y="255" width="236" height="30" rx="8"/>
+                <text class="map-label muted" x="35" y="274">one outline · no split · no new ID</text>
+              </svg>
+            </div>
+            <div class="polygon-summary">
+              <h3>Illustrative outage</h3>
+              <div class="map-stat"><strong>9</strong><span>frozen unhealthy members</span></div>
+              <div class="map-stat"><strong>8</strong><span>located unhealthy members</span></div>
+              <div class="map-stat healthy"><strong>3</strong><span>healthy comparison devices</span></div>
+              <div class="map-key"><span>unhealthy</span><span class="healthy-key">healthy</span></div>
+            </div>
+          </div>
+          <figcaption>The polygon uses usable member locations; the complete frozen membership remains the outage count even when a location is missing.</figcaption>
+        </figure>
+        <ul class="checklist">
+          <li>All usable member locations create exactly one polygon.</li>
+          <li>Distant members never create sub-outages or extra published polygons.</li>
+          <li><code>polygon_area_km2</code> is the geodesic area.</li>
+          <li><code>unhealthy_device_count</code> equals the complete frozen device list.</li>
+          <li><code>located_unhealthy_device_count</code> records members usable for geometry.</li>
+          <li><code>healthy_device_count</code> uses non-members that were live in the same pre-onset window and remained reachable.</li>
+          <li>Healthy and unhealthy counts use distinct devices.</li>
+        </ul>
+        <p class="note limit"><strong>Quality stop:</strong> if one reliable polygon cannot be built, return a geometry-quality failure. Never split the outage.</p>
+      </section>
+
+      <section id="evidence">
+        <h2>6. Internal evidence</h2>
+        <p>Signals support triage but never alter <code>outage_id</code> or the output grain.</p>
+        <figure>
+          <div class="evidence-visual">
+            <div class="signal-groups">
+              <article class="signal-group">
+                <h3><span class="signal-icon" data-icon="⌖" aria-hidden="true"></span>Space</h3>
+                <ul>
+                  <li>Spatial saturation</li>
+                  <li>Cross-CSP correlation</li>
+                  <li>Concurrent outages</li>
+                </ul>
+              </article>
+              <article class="signal-group">
+                <h3><span class="signal-icon" data-icon="◷" aria-hidden="true"></span>Time</h3>
+                <ul>
+                  <li>Co-failure history</li>
+                  <li>Onset spread</li>
+                  <li>Restoration shape</li>
+                  <li>Recurrence and time</li>
+                </ul>
+              </article>
+              <article class="signal-group">
+                <h3><span class="signal-icon" data-icon="+" aria-hidden="true"></span>Context</h3>
+                <ul>
+                  <li>Customer contacts</li>
+                  <li>Sentinel state</li>
+                </ul>
+              </article>
+            </div>
+            <div class="evidence-arrow" aria-hidden="true">→</div>
+            <div class="verdict-card">
+              <small>One current verdict</small>
+              <strong>Cause + confidence</strong>
+              <code>root_cause</code>
+              <code>cause_distribution</code>
+              <code>evidence[]</code>
+            </div>
+          </div>
+          <figcaption>Independent spatial, temporal, and contextual evidence converges on one revisable attribution.</figcaption>
+        </figure>
+        <p class="note">Cross-CSP correlation is evidence, not proof. Trust it only where CSPs have independent fibre and upstream paths.</p>
+      </section>
+
+      <section id="revisions">
+        <h2>7. Revision behaviour</h2>
+        <figure class="revision-figure">
+          <div class="revision-key"><code>outage_id</code> stays fixed</div>
+          <ol class="revision-timeline" aria-label="Outage attribution revision lifecycle">
+            <li><strong>Detection</strong><code>revision 1</code><span>Initial evidence</span></li>
+            <li><strong>Open refresh</strong><code>revision 2</code><span>Duration + contacts</span></li>
+            <li><strong>Recovery observed</strong><code>revision n</code><span>Restoration shape</span></li>
+            <li><strong>Restored</strong><code>is_final = true</code><span>Final verdict</span></li>
+          </ol>
+          <figcaption>Each update replaces the current verdict for the same outage; it does not create another published row.</figcaption>
+        </figure>
+        <ul class="checklist">
+          <li>Run at detection and refresh while the outage is open.</li>
+          <li>Increment <code>revision</code> and set <code>revised_at</code>.</li>
+          <li>Allow duration, contacts, and restoration to change cause or confidence.</li>
+          <li>Keep the current published row keyed only by <code>outage_id</code>.</li>
+          <li>Finalise on restoration and make updates idempotent.</li>
+        </ul>
+      </section>
+
+      <details id="output" open>
+        <summary>8. Final POST/output</summary>
+        <div class="details-body">
+          <p><strong>Exactly one current row per <code>outage_id</code>; <code>outage_id</code> is the only key.</strong></p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>outage_id</code></td><td>Source and output key</td></tr>
+                <tr><td><code>geometry</code>, <code>geometry_version</code></td><td>Single outage polygon</td></tr>
+                <tr><td><code>polygon_area_km2</code></td><td>Polygon size in square kilometres</td></tr>
+                <tr><td><code>unhealthy_device_count</code></td><td>Complete frozen affected set</td></tr>
+                <tr><td><code>located_unhealthy_device_count</code></td><td>Affected devices used for geometry</td></tr>
+                <tr><td><code>healthy_device_count</code></td><td>Positive healthy comparison devices inside the polygon</td></tr>
+                <tr><td><code>root_cause</code></td><td>CSP_SIDE, ACCESS_FIBRE, PREMISE_POWER, or UNKNOWN</td></tr>
+                <tr><td><code>sub_cause</code></td><td>Nullable future ISP/OLT detail</td></tr>
+                <tr><td><code>spatial_extent</code></td><td>LOCAL, SUB_REGIONAL, or REGIONAL</td></tr>
+                <tr><td><code>event_pattern</code></td><td>UNPLANNED, SCHEDULED, RECURRING, or UNKNOWN</td></tr>
+                <tr><td><code>confidence</code></td><td>Calibrated value; coarse band before labels exist</td></tr>
+                <tr><td><code>cause_distribution</code></td><td>Support assigned to each root cause</td></tr>
+                <tr><td><code>evidence[]</code></td><td>Signals that fired and their values</td></tr>
+                <tr><td><code>expected_restoration_class</code></td><td>Downstream duration class</td></tr>
+                <tr><td><code>revision</code>, <code>revised_at</code>, <code>is_final</code></td><td>Verdict lifecycle</td></tr>
+                <tr><td><code>engine_version</code>, <code>snapshot_at</code></td><td>Reproducibility</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Evidence stays inside the outage row or internal audit store; it creates no new published key.</p>
+          <p class="note info"><strong>Audience routing:</strong> Communication applies audience-specific thresholds. Labs supplies confidence and restoration class; it does not decide or send messages.</p>
+        </div>
+      </details>
+
+      <section id="validation">
+        <h2>9. Labels and validation</h2>
+        <ul class="checklist">
+          <li>Ship the feedback loop alongside v1.</li>
+          <li>Backfill historical pings, outages, and ISD contacts first.</li>
+          <li>Use neutral CSP confirmation as the strongest practical label.</li>
+          <li>Never connect confirmation to penalties, SLA scoring, or incentives.</li>
+          <li>Treat ticket volume as visibility evidence, not cause, unless reason text supplies cause.</li>
+          <li>Normalise contact rate against the locality baseline.</li>
+          <li>Keep UNKNOWN instead of forcing a guess.</li>
+          <li>Calibrate on held-out labels and beat the majority or “always power” baseline.</li>
+          <li>Pilot sentinels before deployment.</li>
+        </ul>
+      </section>
+
+      <details id="limits">
+        <summary>10. Open decisions and limits</summary>
+        <div class="details-body">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Gap</th><th>Decision needed</th></tr></thead>
+              <tbody>
+                <tr><td>Fibre/power separation</td><td>Validate that the signals separate the pair reliably</td></tr>
+                <tr><td>Spatial extent</td><td>Lock LOCAL, SUB_REGIONAL, and REGIONAL boundaries</td></tr>
+                <tr><td>Polygon distortion</td><td>Set location-coverage and maximum-gap quality rules</td></tr>
+                <tr><td>Restoration class</td><td>Define duration bands consumed by Communication</td></tr>
+                <tr><td>CSP shutdown</td><td>Decide whether wilful shutdown needs its own cause</td></tr>
+                <tr><td>ISP/OLT split</td><td>Revisit only when evidence and operational routing justify it</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note limit">Ping reachability cannot prove physical root cause. If the classifier does not beat the baseline, retain the plumbing and collapse the unsupported distinction.</p>
+        </div>
+      </details>
+
+      <section id="handoff">
+        <h2>11. Minimum handoff</h2>
+        <ul class="checklist">
+          <li>Narrow Detection GET with stable ID and frozen membership.</li>
+          <li>Portfolio-wide historical ping access.</li>
+          <li>Event-time coordinates and CSP mappings.</li>
+          <li>Concurrent-outage visibility.</li>
+          <li>Historical ISD contacts and CSP-confirmation path.</li>
+          <li>Agreed taxonomy, restoration classes, and revision cadence.</li>
+        </ul>
+        <p class="note limit"><strong>Fail closed:</strong> stop classification when keys, membership, timestamps, or location coverage fail validation. Never guess missing facts.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>Labs outage triage · Data ask · Draft for alignment</footer>
+</body>
+</html>

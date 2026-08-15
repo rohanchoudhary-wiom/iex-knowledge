@@ -9,11 +9,26 @@ The engine identifies the most likely **failure domain**. It does not prove a ph
 The single input is `data/input/outage_devices.csv`, exported by [`sql/outage_devices.sql`](sql/outage_devices.sql).
 
 ```text
-active CUSTOMER_V_2 customer and device
+latest active CUSTOMER_V_2 row per device with PLAN_EXPIRY_TIME
+  -> last valid successful ping in the rolling 15-day snapshot
+  -> retain only PLAN_EXPIRY_TIME > last successful ping + 12 hours
   -> T_ADDRESS through GOOGLE_ADDRESS_ID for latitude and longitude
   -> T_DEVICE through DEVICE_ID for CSP_ID
-  -> OUTAGE_MEMBER_V3 through CUSTOMER_V_2.DEVICE_ID for outage evidence
+  -> eligible OUTAGE_MEMBER_V3 rows through CUSTOMER_V_2.DEVICE_ID
 ```
+
+### Cohort gate
+
+Eligibility is applied before outage membership, denominator construction, polygon comparison, or map rendering:
+
+```text
+eligible = latest Customer V2 row is ACTIVE
+       and PLAN_EXPIRY_TIME is present
+       and a valid successful ping exists in the 15-day snapshot
+       and PLAN_EXPIRY_TIME > last_successful_ping_ist + 12 hours
+```
+
+The comparison is strict: equality at 12 hours is excluded. An outage membership never bypasses this gate. `plan_expiry_ist` and `last_successful_ping_ist` remain in the CSV as audit fields but are not re-evaluated by the Python engine.
 
 Required engine columns:
 
@@ -29,7 +44,7 @@ Required engine columns:
 
 ### Input validity rules
 
-- `device_id`, `csp_id`, and `h3_id` are mandatory on every row.
+- `device_id` and `csp_id` are mandatory on every row. H3 is required for spatial comparison; devices without a usable location remain in the outage member count but not spatial denominators or polygon geometry.
 - One device must resolve to exactly one `CSP_ID + H3_ID` pair.
 - A router/device always belongs to the same H3. Conflicting H3 assignments stop the run.
 - An outage must belong to exactly one CSP.
@@ -50,8 +65,10 @@ Required engine columns:
 | Affected H3 | An H3 where the CSP's cell is DOWN |
 | Eligible H3 | Any H3 containing an active device for the CSP |
 | CSP-wide affected share | `affected_h3_count / eligible_h3_count` |
+| CSP down share | Concurrent affected eligible devices divided by all eligible Customer V2 devices for the CSP |
+| Polygon peer CSP | Another CSP with an eligible Customer V2 device inside the outage polygon |
 | Neighboring CSP | Another active CSP with devices in the same target H3 |
-| Target H3 | The outage's DOWN H3 with the most DOWN CSPs; affected share breaks a tie. For NOISE, where none are DOWN, the same selection is made from its member H3s |
+| Target H3 | The outage's DOWN H3 with the most DOWN CSPs; affected share breaks a tie. Where none are DOWN, the same selection is made from its member H3s |
 | Attribution event | Outages whose start times fall inside the same anchored time window |
 
 There is **no minimum device-count rule**. Cell size does not block classification:
@@ -121,21 +138,23 @@ Current implementation assumption: when an active comparison cell has no matchin
 
 | Priority | Rule ID | If | Bucket |
 |---:|---|---|---|
-| 1 | `R1_NO_DOWN_CSP_H3` | The affected CSP has no DOWN H3 | `NOISE` |
-| 2 | `R2_MULTI_CSP_ONE_H3` | At least two CSPs are DOWN in the target H3, all have another H3 available for comparison, and they are not all DOWN elsewhere | `AREA-SHARED` |
-| 3 | `R3_MULTI_CSP_MULTI_H3` | At least two CSPs are DOWN in the target H3, all have another H3 available for comparison, and every shared CSP is also DOWN in at least one other H3 | `REGIONAL` |
-| 4 | `R4_CSP_WIDE` | Fewer than two CSPs are DOWN in the target H3; the affected CSP has at least two eligible H3s; at least 80% of its H3s are DOWN; and a neighboring CSP exists | `ISP / OLT` |
-| 5 | `R5_NEIGHBOR_CSP_UP` | Fewer than two CSPs are DOWN in the target H3; the affected CSP has at least two eligible H3s; below 80% of its H3s are DOWN; and a neighboring CSP is UP | `LOCAL CSP FAULT` |
+| 0 | `R0_CSP_DOWN_SHARE` | At least 80% of the CSP's eligible Customer V2 devices are concurrently down | `CSP_SIDE` |
+| 0 | `R0_POLYGON_PEER_UP` | Another active CSP is inside the polygon and no peer-CSP device there is concurrently affected | `CSP_SIDE` |
+| 1 | `R1_NO_DOWN_CSP_H3` | The affected CSP has no DOWN H3 | `UNKNOWN` |
+| 2 | `R2_MULTI_CSP_ONE_H3` | At least two CSPs are DOWN in the target H3, all have another H3 available for comparison, and they are not all DOWN elsewhere | `UNKNOWN` |
+| 3 | `R3_MULTI_CSP_MULTI_H3` | At least two CSPs are DOWN in the target H3, all have another H3 available for comparison, and every shared CSP is also DOWN in at least one other H3 | `UNKNOWN` |
+| 4 | `R4_CSP_WIDE` | Fewer than two CSPs are DOWN in the target H3; the affected CSP has at least two eligible H3s; at least 80% of its H3s are DOWN; and a neighboring CSP exists | `CSP_SIDE` |
+| 5 | `R5_NEIGHBOR_CSP_UP` | Fewer than two CSPs are DOWN in the target H3; the affected CSP has at least two eligible H3s; below 80% of its H3s are DOWN; and a neighboring CSP is UP | `CSP_SIDE` |
 | 6 | `R6_*` | None of the rules above can make a supported comparison | `UNKNOWN` |
 
 ### Rule 1 — NOISE
 
 ```text
 if affected CSP has zero DOWN H3s:
-    bucket = NOISE
+    bucket = UNKNOWN
 ```
 
-Example: CSP Alpha has 2 affected devices out of 10 in H3 A. Its share is 20%, so the cell is UP and the outage is `NOISE`.
+Example: CSP Alpha has 2 affected devices out of 10 in H3 A. Its share is 20%, so the cell is UP and the outage remains `UNKNOWN` unless the polygon peer rule matched first.
 
 ### Rule 2 — AREA-SHARED
 
@@ -143,7 +162,7 @@ Example: CSP Alpha has 2 affected devices out of 10 in H3 A. Its share is 20%, s
 if DOWN CSPs in target H3 >= 2
 and every shared CSP has at least 2 eligible H3s
 and at least one shared CSP is not DOWN in another H3:
-    bucket = AREA-SHARED
+    bucket = UNKNOWN
 ```
 
 Example:
@@ -161,7 +180,7 @@ The failure is shared inside H3 A rather than consistently spread across both CS
 if DOWN CSPs in target H3 >= 2
 and every shared CSP has at least 2 eligible H3s
 and every shared CSP is DOWN in at least one other H3:
-    bucket = REGIONAL
+    bucket = UNKNOWN
 ```
 
 Example:
@@ -181,7 +200,7 @@ and fewer than 2 CSPs are DOWN in the target H3
 and affected CSP has at least 2 eligible H3s
 and affected CSP's DOWN H3 share >= 80%
 and another CSP is active in the target H3:
-    bucket = ISP / OLT
+    bucket = CSP_SIDE
 ```
 
 Example:
@@ -201,7 +220,7 @@ and fewer than 2 CSPs are DOWN in the target H3
 and affected CSP has at least 2 eligible H3s
 and affected CSP's DOWN H3 share < 80%
 and at least one neighboring CSP is UP:
-    bucket = LOCAL CSP FAULT
+    bucket = CSP_SIDE
 ```
 
 Example:
@@ -236,7 +255,6 @@ Examples include a 1/1 DOWN cell for a CSP that exists in only one H3, or a CSP-
 | Decision | HIGH | MEDIUM |
 |---|---|---|
 | Cause bucket | Every DOWN H3 used for the affected CSP is strictly above 70% | At least one DOWN H3 is exactly 70% |
-| NOISE | Every member H3 is UP and strictly below 70%; this is the current valid-input path | Defensive fallback only; not expected from valid current input |
 | UNKNOWN | Never | Always |
 
 Exactly 70% is enough for a DOWN state, but it stays `MEDIUM` confidence because it sits directly on the decision boundary.

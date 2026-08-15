@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A plain-English decision brief for the first device-first spatial outage system.">
+  <title>Device-first outage detection — decision brief</title>
+  <style>
+    :root {
+      --ink: #112238;
+      --muted: #5a6878;
+      --navy: #0b1b30;
+      --paper: #f5f2ea;
+      --card: #fffefa;
+      --line: #d9d6cc;
+      --blue: #1769aa;
+      --cyan: #12aebd;
+      --green: #147955;
+      --green-bg: #e4f4eb;
+      --amber: #a95a08;
+      --amber-bg: #fff0d7;
+      --red: #b63d35;
+      --red-bg: #fde9e6;
+      --violet: #7251b5;
+      --shadow: 0 16px 45px rgba(16, 34, 56, .08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, select { font: inherit; }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 850px; margin-bottom: 18px; font-size: clamp(44px, 6vw, 76px); line-height: .98; letter-spacing: -.055em; }
+    h2 { margin-bottom: 12px; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; letter-spacing: -.035em; }
+    h3 { margin-bottom: 7px; font-size: 19px; line-height: 1.22; }
+    p:last-child { margin-bottom: 0; }
+    button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+    .skip { position: fixed; top: -80px; left: 12px; z-index: 20; padding: 9px 12px; background: white; }
+    .skip:focus { top: 12px; }
+
+    nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 22px; padding: 13px max(20px, calc((100vw - 1180px) / 2)); overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,.14); background: rgba(11,27,48,.97); }
+    nav strong { margin-right: auto; color: white; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+    nav a { color: #dce8f2; font-size: 13px; font-weight: 750; text-decoration: none; white-space: nowrap; }
+
+    .hero { background: var(--navy); color: white; }
+    .hero-inner, main, footer { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
+    .hero-inner { padding: 76px 0 72px; }
+    .eyebrow { margin-bottom: 17px; color: #80dce4; font-size: 12px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+    .lead { max-width: 780px; margin-bottom: 34px; color: #c8d7e5; font-size: clamp(19px, 2vw, 23px); }
+    .verdict { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; align-items: stretch; }
+    .verdict-copy, .core-picture { border: 1px solid rgba(255,255,255,.16); border-radius: var(--radius); background: rgba(255,255,255,.07); }
+    .verdict-copy { padding: 28px; }
+    .verdict-copy > strong { display: block; margin-bottom: 18px; color: #91e2e8; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+    .guardrail { display: grid; grid-template-columns: 36px 1fr; gap: 12px; padding: 14px 0; border-top: 1px solid rgba(255,255,255,.12); }
+    .guardrail:first-of-type { border-top: 0; }
+    .guardrail b { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: #71d9e1; color: var(--navy); }
+    .guardrail span { color: #ccdae6; }
+    .core-picture { display: grid; place-items: center; min-height: 330px; padding: 22px; }
+    .core-picture svg { width: 100%; height: auto; }
+    .not-now { margin-top: 16px; padding: 14px 17px; border-left: 4px solid #f0b45c; background: rgba(255,255,255,.07); color: #d7e2eb; }
+
+    main { padding-bottom: 85px; }
+    section { padding-top: 84px; scroll-margin-top: 48px; }
+    .section-head { max-width: 820px; margin-bottom: 30px; }
+    .section-head span { display: block; margin-bottom: 8px; color: var(--blue); font-size: 11px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+    .section-head p { color: var(--muted); font-size: 18px; }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); }
+    .tag { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #e6f2f9; color: var(--blue); font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+
+    .folder-flow { display: grid; grid-template-columns: 1fr 52px 1fr 52px 1fr; align-items: stretch; }
+    .folder-card { padding: 24px; }
+    .folder-card.current { border-top: 5px solid var(--violet); }
+    .folder-card.target { border-top: 5px solid var(--cyan); }
+    .folder-card.source { border-top: 5px solid var(--blue); }
+    .folder-card p { color: var(--muted); }
+    .arrow { display: grid; place-items: center; color: var(--blue); font-size: 28px; font-weight: 900; }
+    .folder-answer { margin-top: 16px; padding: 18px 21px; border-left: 5px solid var(--cyan); background: #e7f7f8; font-size: 18px; }
+
+    .algorithm { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; counter-reset: step; }
+    .algo-step { position: relative; min-height: 190px; padding: 22px; overflow: hidden; }
+    .algo-step::before { counter-increment: step; content: counter(step); display: grid; width: 36px; height: 36px; margin-bottom: 22px; place-items: center; border-radius: 50%; background: var(--navy); color: white; font-weight: 900; }
+    .algo-step p { color: var(--muted); }
+    .algo-step code { display: inline-block; margin-top: 8px; padding: 5px 8px; border-radius: 7px; background: #edf1f3; color: var(--ink); font-size: 12px; }
+    .gold-rule { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-top: 16px; padding: 22px; border: 2px solid #e4b45f; border-radius: var(--radius); background: var(--amber-bg); }
+    .gold-rule b { font-size: 34px; line-height: 1; }
+
+    .case-picker { display: flex; gap: 8px; margin-bottom: 12px; padding-bottom: 4px; overflow-x: auto; scrollbar-width: thin; }
+    .case-button { flex: none; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 800; }
+    .case-button[aria-pressed="true"] { border-color: var(--blue); background: var(--blue); color: white; }
+    .lab { overflow: hidden; }
+    .case-title { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 22px 24px; border-bottom: 1px solid var(--line); }
+    .case-title h3 { margin: 0; font-size: 24px; }
+    .case-count { color: var(--muted); font-size: 12px; font-weight: 800; }
+    .case-grid { display: grid; grid-template-columns: 1.12fr .88fr; min-height: 580px; }
+    .case-visual { padding: 22px; border-right: 1px solid var(--line); background: #f3f7f7; }
+    .map-wrap { overflow: hidden; border: 1px solid #cbd6d8; border-radius: 14px; background: white; }
+    #map { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 2px 0; color: var(--muted); font-size: 11px; }
+    .legend i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 50%; }
+    .timeline { margin-top: 17px; padding: 16px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+    .timeline h3 { margin-bottom: 12px; font-size: 14px; }
+    .time-row { display: grid; grid-template-columns: 115px 1fr; gap: 9px; align-items: center; margin-top: 8px; }
+    .time-row span { overflow: hidden; font-size: 11px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .time-track { position: relative; height: 13px; border-radius: 999px; background: #e9edef; }
+    .time-bar { position: absolute; inset-block: 2px; left: var(--start); width: var(--width); border-radius: inherit; background: var(--red); }
+    .time-bar.healthy { background: var(--green); }
+    .time-bar.unknown { background: var(--amber); }
+    .case-logic { display: flex; flex-direction: column; padding: 25px; }
+    .case-summary { color: var(--muted); font-size: 17px; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 20px; }
+    .metric { padding: 12px; border-radius: 11px; background: #f0f2f3; }
+    .metric strong { display: block; font-size: 20px; }
+    .metric span { color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+    .trace { margin: 0; padding: 0; list-style: none; }
+    .trace li { display: grid; grid-template-columns: 64px 1fr; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); }
+    .trace b { align-self: start; padding: 4px 6px; border-radius: 6px; background: var(--green-bg); color: var(--green); font-size: 10px; text-align: center; text-transform: uppercase; }
+    .trace b.stop { background: var(--red-bg); color: var(--red); }
+    .trace b.watch { background: var(--amber-bg); color: var(--amber); }
+    .outcome { margin-top: auto; padding: 17px; border-radius: 13px; background: var(--green-bg); color: var(--green); }
+    .outcome.warn { background: var(--amber-bg); color: var(--amber); }
+    .outcome.stop { background: var(--red-bg); color: var(--red); }
+    .outcome span { display: block; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .outcome strong { display: block; margin-top: 3px; font-size: 19px; }
+
+    .research-verdicts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    .research-verdict { padding: 23px; }
+    .research-verdict:nth-child(1) { border-top: 5px solid var(--green); }
+    .research-verdict:nth-child(2) { border-top: 5px solid var(--amber); }
+    .research-verdict:nth-child(3) { border-top: 5px solid var(--red); }
+    .research-verdict ul { margin: 13px 0 0; padding-left: 19px; color: var(--muted); }
+    .paper-list { overflow: hidden; }
+    .paper-list > header { padding: 19px 22px; border-bottom: 1px solid var(--line); }
+    .paper-list > header p { color: var(--muted); }
+    details { border-bottom: 1px solid var(--line); }
+    details:last-child { border-bottom: 0; }
+    summary { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 16px 21px; cursor: pointer; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    .paper-number { color: var(--muted); font-size: 12px; font-weight: 900; }
+    summary strong { display: block; }
+    summary small { color: var(--muted); }
+    .paper-action { padding: 5px 8px; border-radius: 999px; background: var(--green-bg); color: var(--green); font-size: 9px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+    .paper-action.later { background: var(--amber-bg); color: var(--amber); }
+    .paper-action.context { background: #e7eff7; color: var(--blue); }
+    .paper-body { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 0 76px 20px; color: var(--muted); }
+    .paper-body b { display: block; margin-bottom: 4px; color: var(--ink); }
+
+    .ship-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .ship-card { padding: 26px; }
+    .ship-card.ship { border-top: 6px solid var(--green); }
+    .ship-card.later { border-top: 6px solid var(--amber); }
+    .ship-card ul { margin: 14px 0 0; padding-left: 20px; }
+    .ship-card li + li { margin-top: 8px; }
+    .proof { margin-top: 15px; padding: 18px 21px; border-radius: 14px; background: var(--navy); color: white; }
+    .proof strong { color: #8ce0e7; }
+    footer { padding: 35px 0 60px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    footer a + a { margin-left: 16px; }
+
+    @media (max-width: 850px) {
+      .verdict, .case-grid, .ship-grid { grid-template-columns: 1fr; }
+      .core-picture { min-height: 270px; }
+      .folder-flow { grid-template-columns: 1fr; gap: 10px; }
+      .arrow { transform: rotate(90deg); }
+      .algorithm, .research-verdicts { grid-template-columns: 1fr 1fr; }
+      .case-visual { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+    @media (max-width: 560px) {
+      .hero-inner, main, footer { width: min(100% - 24px, 1180px); }
+      .hero-inner { padding: 54px 0; }
+      .algorithm, .research-verdicts, .metrics { grid-template-columns: 1fr; }
+      .case-title { align-items: start; flex-direction: column; }
+      summary { grid-template-columns: 34px 1fr; }
+      .paper-action { grid-column: 2; justify-self: start; }
+      .paper-body { grid-template-columns: 1fr; padding: 0 22px 20px 68px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <nav aria-label="Page sections">
+    <strong>Outage decision brief</strong>
+    <a href="#answer">Answer</a>
+    <a href="#algorithm">Algorithm</a>
+    <a href="#dry-runs">Dry runs</a>
+    <a href="#research">Research</a>
+    <a href="#build">Build now</a>
+  </nav>
+
+  <header class="hero" id="answer">
+    <div class="hero-inner">
+      <div class="eyebrow">Decision for the first implementation</div>
+      <h1>Keep the core. Ship three guardrails.</h1>
+      <p class="lead">The papers do not justify replacing your algorithm. The clean V1 is still: nearby devices that fail together form an event; the polygon is drawn afterwards.</p>
+
+      <div class="verdict">
+        <div class="verdict-copy">
+          <strong>What the research changes now</strong>
+          <div class="guardrail"><b>1</b><div><h3>Trust only time-valid evidence</h3><span>A device is healthy only when positive pings prove it. Missing data stays UNKNOWN.</span></div></div>
+          <div class="guardrail"><b>2</b><div><h3>Keep detection separate from cause</h3><span>The spatial pattern can suggest a failure domain; it cannot confirm fibre, power, or OLT.</span></div></div>
+          <div class="guardrail"><b>3</b><div><h3>Measure the two risky behaviours</h3><span>Log component chaining and event stitching, then tune them using historical replay.</span></div></div>
+        </div>
+        <div class="core-picture" aria-label="Devices form a group before a polygon is drawn">
+          <svg viewBox="0 0 520 330" role="img" aria-labelledby="core-title core-desc">
+            <title id="core-title">The device-first rule</title>
+            <desc id="core-desc">Failed devices are connected by distance and overlapping failure time. Their connected group defines membership. A polygon is drawn around that group afterwards.</desc>
+            <path d="M65 171C68 76 157 40 248 62c98-19 196 22 205 107 11 94-89 131-189 111-103 24-204-15-199-109Z" fill="rgba(18,174,189,.15)" stroke="#5fd4de" stroke-width="4" stroke-dasharray="9 7"/>
+            <g fill="none" stroke="#8aa0b3" stroke-width="3">
+              <path d="M120 185L180 120L241 170L315 111L387 176M180 120L315 111M241 170L290 232M387 176L290 232"/>
+            </g>
+            <g fill="#ef6159" stroke="#fff" stroke-width="4">
+              <circle cx="120" cy="185" r="12"/><circle cx="180" cy="120" r="12"/><circle cx="241" cy="170" r="12"/><circle cx="315" cy="111" r="12"/><circle cx="387" cy="176" r="12"/><circle cx="290" cy="232" r="12"/>
+            </g>
+            <text x="260" y="310" text-anchor="middle" fill="#dce8f2" font-size="15" font-weight="700">group first → polygon second</text>
+          </svg>
+        </div>
+      </div>
+      <div class="not-now"><strong>Do not add to V1:</strong> ML classifiers, spectral graph models, shared-change-point models, active probing, or automatic bridge splitting. They add complexity before we have labelled replay evidence.</div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="context">
+      <div class="section-head">
+        <span>Where this fits</span>
+        <h2>One folder, three different jobs.</h2>
+        <p>The new system is a spatial layer after TFF detection. The existing H3 code is a comparison baseline—not the target architecture.</p>
+      </div>
+      <div class="folder-flow">
+        <article class="panel folder-card source"><span class="tag">Upstream contract</span><h3>TFF detects outages</h3><p>Supplies frozen device membership, failure intervals, CSP identity, recovery, and wide-event disposition.</p><a href="CURRENT_OUTAGE_DETECTION_TFF_V2_1.md">Open TFF specification</a></article>
+        <div class="arrow" aria-hidden="true">→</div>
+        <article class="panel folder-card current"><span class="tag">Current comparator</span><h3>H3 attributes fixed cells</h3><p>The runnable prototype gives us a baseline with 6,217 retrospective classifications, but fixed borders can split one event.</p><a href="attribute.py">Open current baseline</a></article>
+        <div class="arrow" aria-hidden="true">→</div>
+        <article class="panel folder-card target"><span class="tag">First system to build</span><h3>Devices define local events</h3><p>Membership comes from distance plus overlapping failure time. Geometry describes the result; it never creates it.</p><a href="SPATIAL_ATTRIBUTION_DATA_ASK.md">Open spatial contract</a></article>
+      </div>
+      <div class="folder-answer"><strong>Plain English:</strong> TFF says which devices failed and when. This system decides which failures belong to the same place and what we can cautiously infer from that pattern.</div>
+    </section>
+
+    <section id="algorithm">
+      <div class="section-head">
+        <span>The V1 algorithm</span>
+        <h2>Six decisions. No model training.</h2>
+        <p>Each step answers one question and can be reproduced from stored evidence.</p>
+      </div>
+      <div class="algorithm">
+        <article class="panel algo-step"><h3>Is the whole CSP down?</h3><p>If the upstream incident is provider-wide, retain it for audit and stop local polygon creation.</p><code>wide → exit local flow</code></article>
+        <article class="panel algo-step"><h3>Which failures connect?</h3><p>Add an edge only when two failed devices are geographically close and their down intervals overlap.</p><code>near AND concurrent</code></article>
+        <article class="panel algo-step"><h3>What is one event?</h3><p>Each connected component is a candidate event. No fixed number of clusters and no H3 border.</p><code>component = membership</code></article>
+        <article class="panel algo-step"><h3>Who belongs in its denominator?</h3><p>Assign every time-valid local device to one candidate only. Missing telemetry remains UNKNOWN.</p><code>no double counting</code></article>
+        <article class="panel algo-step"><h3>Is the evidence strong enough?</h3><p>Keep the event only when the local population and affected share both clear the V1 gates.</p><code>eligible ≥ 10; affected ≥ 75%</code></article>
+        <article class="panel algo-step"><h3>How do we describe it?</h3><p>Draw the polygon, compare CSP states, and stitch later versions without rewriting source history.</p><code>inferred domain, not cause</code></article>
+      </div>
+      <div class="gold-rule"><b>✦</b><div><h3>The non-negotiable rule</h3><p><strong>Devices decide membership. The polygon only visualises membership.</strong> Overlapping polygons must never merge two outage groups.</p></div></div>
+    </section>
+
+    <section id="dry-runs">
+      <div class="section-head">
+        <span>Interactive dry-run lab</span>
+        <h2>One incident at a time.</h2>
+        <p>Choose a case. The map, timeline, calculation, and final decision update together.</p>
+      </div>
+      <div class="case-picker" id="case-picker" aria-label="Dry-run scenarios"></div>
+      <div class="panel lab">
+        <header class="case-title"><h3 id="case-title"></h3><div class="case-count" id="case-count"></div></header>
+        <div class="case-grid">
+          <div class="case-visual">
+            <div class="map-wrap"><svg id="map" viewBox="0 0 640 360" role="img" aria-labelledby="map-title"><title id="map-title">Synthetic outage map</title></svg></div>
+            <div class="legend"><span><i style="background:#b63d35"></i>down</span><span><i style="background:#147955"></i>healthy</span><span><i style="background:#a95a08"></i>unknown</span><span><i style="background:#fff;border:2px solid #1769aa"></i>CSP A</span><span><i style="background:#fff;border:2px solid #7251b5"></i>CSP B</span></div>
+            <div class="timeline"><h3>Failure timing</h3><div id="timeline"></div></div>
+          </div>
+          <div class="case-logic">
+            <p class="case-summary" id="case-summary"></p>
+            <div class="metrics" id="metrics"></div>
+            <ol class="trace" id="trace"></ol>
+            <div class="outcome" id="outcome"><span>Decision</span><strong id="outcome-text"></strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="research">
+      <div class="section-head">
+        <span>What fourteen papers actually change</span>
+        <h2>The literature strengthens the guardrails—not the machinery.</h2>
+        <p>The exact pipeline is not reproduced by one paper. The closest work supports individual choices and warns against premature complexity.</p>
+      </div>
+      <div class="research-verdicts">
+        <article class="panel research-verdict"><span class="tag">Use now</span><h3>Evidence discipline</h3><ul><li>Stable, time-valid baselines</li><li>Explicit UNKNOWN state</li><li>Separate detection from cause</li><li>Preserve source lineage</li></ul></article>
+        <article class="panel research-verdict"><span class="tag">Measure now</span><h3>Known graph risks</h3><ul><li>Component bridge chaining</li><li>False merge and split rate</li><li>Stitching stability</li><li>Detection delay</li></ul></article>
+        <article class="panel research-verdict"><span class="tag">Defer</span><h3>Complex methods</h3><ul><li>Shared change-point models</li><li>Spectral graph detection</li><li>Dynamic graph ML</li><li>Active probing systems</li></ul></article>
+      </div>
+      <div class="panel paper-list">
+        <header><h3>Paper-by-paper evidence</h3><p>Collapsed by default so the decision remains readable. Open a paper only when you need its transfer lesson and limitation.</p></header>
+        <div id="papers"></div>
+      </div>
+    </section>
+
+    <section id="build">
+      <div class="section-head">
+        <span>Scope decision</span>
+        <h2>What we build first—and what waits.</h2>
+        <p>A deterministic V1 is enough to test whether device-first grouping beats the current H3 baseline.</p>
+      </div>
+      <div class="ship-grid">
+        <article class="panel ship-card ship"><span class="tag">Build now</span><h3>Small, auditable V1</h3><ul><li>Consume TFF member intervals and device inventory</li><li>Exclude CSP-wide events from local grouping</li><li>Build distance + time-overlap components</li><li>Apply unique denominator ownership and evidence gates</li><li>Draw versioned polygons and conservative domain labels</li><li>Log every threshold and decision</li></ul></article>
+        <article class="panel ship-card later"><span class="tag">Only after replay</span><h3>Add when evidence demands it</h3><ul><li>Statistical shared-change detection</li><li>Automatic component bridge splitting</li><li>Spectral or learned graph anomaly models</li><li>Supervised physical-cause classification</li><li>External weather, search, or active-probe inputs</li></ul></article>
+      </div>
+      <div class="proof"><strong>The next proof:</strong> replay the same labelled historical incidents through H3 and device-first V1; compare event precision/recall, false merges/splits, delay, stability, and UNKNOWN rate. Until then, “better than H3” is a hypothesis.</div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Evidence boundary:</strong> 13 full papers and one abstract-only source were inspected. All cause labels shown here are inferred domains, not confirmed physical causes.</p>
+    <a href="15_DAY_OUTAGE_REPORT.md">Current 15-day report</a><a href="../research_papers/device_first_spatiotemporal_outage_detection/">Local paper folder</a>
+  </footer>
+
+  <script>
+    const offsets = [[0,0],[-34,-20],[32,-25],[-48,24],[47,20],[-12,45],[20,54],[-66,-7],[68,-4],[-61,58],[62,55],[-5,-58],[5,82],[-82,30]];
+    const cluster = (cx, cy, count, state="down", csp="A", group="g") => offsets.slice(0,count).map(([x,y],i)=>({x:cx+x,y:cy+y,state,csp,group,id:`${group}${i+1}`}));
+    const line = (count, y=180) => Array.from({length:count},(_,i)=>({x:65+i*46,y:y+(i%2?16:-12),state:"down",csp:"A",group:"chain",id:`c${i+1}`}));
+    const P = {
+      local:["M150 245C126 130 198 70 318 82c125-15 218 46 205 145-12 91-108 117-210 95-91 13-145-9-163-77Z"],
+      shared:["M145 244C129 124 218 73 326 82 442 66 522 128 507 232c-17 89-112 109-207 87-92 13-141-11-155-75Z"],
+      small:["M202 242C181 140 237 91 326 96c92-7 155 47 143 133-12 69-82 93-151 76-67 8-105-12-116-63Z"],
+      boundary:["M205 243C186 127 247 83 329 91 417 73 477 131 466 227c-12 72-83 94-151 76-68 10-102-13-110-60Z"],
+      unknown:["M178 247C159 126 241 77 333 87 430 69 506 128 489 233-15 78-91 101-170 82-75 12-128-10-144-68Z"],
+      stitch:["M132 244C118 117 206 70 318 80 439 60 533 126 514 236-16 85-113 109-211 86-95 15-152-7-166-78Z","M180 256C152 148 228 91 343 88 450 83 525 146 489 245-30 80-122 89-204 68-73 8-91-3-105-55Z"],
+      split:["M76 229C62 132 121 84 213 96 282 99 304 152 284 224-17 58-78 79-133 61-52 11-68-8-75-56Z","M365 230C353 137 408 92 493 99 568 96 600 151 581 225-17 58-78 78-133 60-50 10-73-10-83-55Z"],
+      chain:["M35 229C28 144 85 118 164 130 280 104 397 106 504 129c79-13 117 18 108 92-8 62-72 77-144 64-102 20-216 17-318 2-74 12-108-2-115-58Z"]
+    };
+
+    const scenarios = [
+      {short:"Local CSP",title:"Local failure with a healthy comparison CSP",summary:"Twelve CSP-A devices fail together. Three CSP-B devices in the same place are positively observed healthy.",nodes:[...cluster(315,190,12),...cluster(455,118,3,"healthy","B","h")],polygons:P.local,metrics:[["12%","CSP-wide share"],["15","local eligible"],["80%","affected share"]],timeline:[["CSP A down",14,66,"down"],["CSP B healthy",0,100,"healthy"]],trace:[["PASS","Not CSP-wide: 12% < 80%"],["PASS","One near + concurrent component"],["PASS","15 eligible and 12 affected"],["PASS","Healthy comparison CSP exists"]],outcome:"Likely local CSP domain — physical cause unconfirmed"},
+      {short:"Shared CSPs",title:"Two CSPs fail together in one place",summary:"Independent CSP-A and CSP-B members fail concurrently inside the same qualified local component.",nodes:[...cluster(310,190,6,"down","A","a"),...cluster(385,170,5,"down","B","b"),...cluster(470,255,3,"healthy","B","h")],polygons:P.shared,metrics:[["2","affected CSPs"],["14","local eligible"],["78.6%","affected share"]],timeline:[["CSP A down",12,65,"down"],["CSP B down",19,60,"down"],["shared time",19,58,"unknown"]],trace:[["PASS","Both CSP source outages retained"],["PASS","35 minutes of shared failure"],["PASS","11 of 14 affected"],["WATCH","Pattern suggests shared domain only"]],outcome:"Likely shared infrastructure domain — cause unconfirmed",tone:"warn"},
+      {short:"CSP-wide",title:"Provider-wide failure exits local processing",summary:"Eighty-two of one hundred live CSP devices fail. Creating local polygons would fragment one wide event into misleading incidents.",nodes:line(12,150).concat(line(6,245).map(n=>({...n,id:`w${n.id}`,group:"wide"}))),metrics:[["82","devices down"],["100","live base"],["82%","CSP-wide share"]],timeline:[["region 1",10,74,"down"],["region 2",12,72,"down"]],trace:[["STOP","82% meets the provider-wide gate"],["STOP","Skip local graph and polygon"],["PASS","Retain source incident for audit"]],outcome:"Excluded from local spatial attribution",tone:"stop"},
+      {short:"Too small",title:"High prevalence but too few devices",summary:"Eight of nine local devices fail. The percentage is high, but the evidence population is below the minimum of ten.",nodes:[...cluster(325,190,8),...cluster(430,245,1,"healthy","B","h")],polygons:P.small,metrics:[["9","local eligible"],["8","affected"],["88.9%","affected share"]],timeline:[["8 affected",18,58,"down"],["1 healthy",0,100,"healthy"]],trace:[["PASS","Near + concurrent component exists"],["PASS","Affected share clears 75%"],["STOP","Eligible population 9 < 10"]],outcome:"Insufficient spatial evidence",tone:"stop"},
+      {short:"H3 border",title:"One outage crosses an H3 boundary",summary:"Each fixed cell dilutes the signal with unrelated devices. The local device component crosses the artificial border and qualifies.",nodes:[...cluster(318,190,12),...cluster(460,270,3,"healthy","B","h")],polygons:P.boundary,boundary:true,metrics:[["60%","left H3"],["66.7%","right H3"],["80%","local component"]],timeline:[["left members",14,64,"down"],["right members",16,61,"down"]],trace:[["STOP","Both H3 cells miss 70%"],["PASS","Devices connect across the border"],["PASS","12 of 15 local devices affected"]],outcome:"Device-first component qualifies"},
+      {short:"Different time",title:"Nearby failures happen at different times",summary:"The devices occupy the same small area, but group one recovers before group two fails. Geography alone cannot merge them.",nodes:[...cluster(285,180,6,"down","A","t1"),...cluster(375,205,6,"down","A","t2")],metrics:[["near","distance"],["0 min","time overlap"],["2","components"]],timeline:[["group one",5,28,"down"],["group two",55,30,"down"]],trace:[["PASS","Distance check passes"],["STOP","No cross-group time overlap"],["PASS","Keep two temporal components"]],outcome:"Two separate events"},
+      {short:"Missing data",title:"Missing evidence blocks cause attribution",summary:"Eight devices are affected, but four comparison devices have no positive ping evidence. They are UNKNOWN, not healthy.",nodes:[...cluster(320,190,8),...cluster(445,180,4,"unknown","B","u")],polygons:P.unknown,metrics:[["8","affected"],["0","proven healthy"],["4","unknown"]],timeline:[["affected",18,62,"down"],["comparison",0,100,"unknown"]],trace:[["PASS","Affected membership is valid"],["WATCH","Comparison devices lack evidence"],["STOP","Do not manufacture a counterfactual"]],outcome:"UNKNOWN — no failure-domain claim",tone:"stop"},
+      {short:"Stitch",title:"Two polygon versions continue one event",summary:"The event changes shape as devices recover. Time, member, and area continuity all pass, so both immutable versions share one event ID.",nodes:cluster(325,190,12),polygons:P.stitch,metrics:[["15 min","time overlap"],["60%","member continuity"],["42%","area continuity"]],timeline:[["polygon v1",10,62,"down"],["polygon v2",48,46,"down"],["overlap",48,24,"unknown"]],trace:[["PASS","Time overlap ≥ 15 minutes"],["PASS","Member continuity ≥ 50%"],["PASS","Area continuity ≥ 20%"],["PASS","Keep both versions immutable"]],outcome:"One event ID, two polygon versions"},
+      {short:"Split",title:"One source outage forms two disconnected places",summary:"TFF supplies one frozen source outage, but its members form two disconnected geographic components.",nodes:[...cluster(185,190,7,"down","A","p1"),...cluster(485,190,7,"down","A","p2")],polygons:P.split,metrics:[["1","source outage"],["2","components"],["2","polygons"]],timeline:[["place one",15,60,"down"],["place two",22,54,"down"]],trace:[["PASS","Preserve the TFF source ID"],["PASS","Graph finds two components"],["PASS","Create one polygon per component"]],outcome:"Two polygons, one source lineage"},
+      {short:"Chain risk",title:"Short edges create a long component chain",summary:"Every neighbouring edge is valid, but transitivity joins distant endpoints. V1 records the risk instead of guessing a split rule.",nodes:line(12),polygons:P.chain,metrics:[["12","members"],["1","component"],["> D","endpoint span"]],timeline:[["chain members",16,64,"down"]],trace:[["PASS","Every local edge is valid"],["WATCH","Component span exceeds adjacency distance"],["PASS","Log bridge structure for replay"],["WATCH","Add splitting only if labels show false merges"]],outcome:"Qualified with chaining watch flag",tone:"warn"}
+    ];
+
+    const paperBase = "../research_papers/device_first_spatiotemporal_outage_detection/";
+    const papers = [
+      ["Trinocular: Understanding Internet Reliability Through Adaptive Probing","SIGCOMM 2013","now","Use stable responsiveness baselines, uncertainty, and common-mode checks.","Active probing and fixed /24 units are not our membership design.","01_trinocular_quan_heidemann_pradkin_sigcomm_2013.pdf"],
+      ["Advancing the Art of Internet Edge Outage Detection","IMC 2018","now","Treat absence as meaningful only against stable baseline activity.","It uses passive CDN/address-block evidence, not device geometry.","02_internet_edge_outage_detection_richter_et_al_imc_2018.pdf"],
+      ["Analysis of Country-wide Internet Outages Caused by Censorship","IMC 2011","now","Combine independent evidence before narrowing a cause.","Its country/network scale is far coarser than local events.","03_country_wide_outages_censorship_dainotti_et_al_imc_2011.pdf"],
+      ["Pingin’ in the Rain","IMC 2011","context","Time-space correlation can reveal one event but cannot prove its cause.","Requires active probing and external weather data.","04_pingin_in_the_rain_schulman_spring_imc_2011.pdf"],
+      ["Is my Internet down? Sifting through User-Affecting Outages with Google Trends","IMC 2022","context","Weak individual signals can form interpretable geographic events.","Abstract-only here; uses an external behavioural proxy.","05_sift_access_link.txt"],
+      ["Tracking Internet Disruptions in Ukraine","IMC 2025","now","Separate full-block from partial failures and validate changing geography.","Uses active scans and address/administrative aggregation.","06_ukraine_disruptions_holzbauer_strobl_ullrich_imc_2025.pdf"],
+      ["FANcY: FAst In-Network GraY Failure Detection for ISPs","SIGCOMM 2022","context","Coarse-to-fine localisation and evidence volume are useful principles.","Needs programmable in-network infrastructure and does not identify root cause.","07_fancy_costa_molero_vissicchio_vanbever_sigcomm_2022.pdf"],
+      ["Taking the Blame Game out of Data Centers Operations with NetPoirot","SIGCOMM 2016","later","Cause classification needs diagnostic features and labelled fault examples.","Those data and training labels do not exist in our current input.","08_netpoirot_arzani_et_al_sigcomm_2016.pdf"],
+      ["Laplacian Change Point Detection for Dynamic Graphs","KDD 2020","later","Graph regime changes may help future split/merge monitoring.","It detects changed snapshots, not the responsible device component.","09_laplacian_change_point_huang_et_al_kdd_2020.pdf"],
+      ["Fast and Accurate Anomaly Detection in Dynamic Graphs with a Two-Pronged Approach","KDD 2019","later","Online graph-change scores may help if scale becomes a problem.","It scores structural importance changes, not outage membership.","10_anomrank_yoon_et_al_kdd_2019.pdf"],
+      ["StreamSpot: Fast Memory-efficient Anomaly Detection in Streaming Heterogeneous Graphs","KDD 2016","later","Bounded-memory graph streaming is available if throughput demands it.","Its system-call graph abstraction is not our current problem.","11_streamspot_manzoor_milajerdi_akoglu_kdd_2016.pdf"],
+      ["Fast Detection of Multiple Change-Points Shared by Many Signals Using Group LARS","NeurIPS 2010","later","Many devices changing together can be modelled statistically.","It has no spatial layer and adds model-selection complexity.","12_shared_change_points_vert_bleakley_neurips_2010.pdf"],
+      ["Change Point Detection via Multivariate Singular Spectrum Analysis","NeurIPS 2021","later","Offers an explicit false-alarm versus detection-delay trade-off.","Assumes shared latent structure and complicates multiple changes.","13_mssa_change_point_alanqary_alomar_shah_neurips_2021.pdf"],
+      ["DP-DGAD: A Generalist Dynamic Graph Anomaly Detector with Dynamic Prototypes","WebConf 2026 preprint","later","Shows a modern learned approach to evolving graph anomalies.","Needs learned source patterns and has no outage evaluation.","14_dp_dgad_zheng_et_al_webconf_2026.pdf"]
+    ];
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = (name, attrs={}) => { const el=document.createElementNS(svgNS,name); Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v)); return el; };
+    const fills = {down:"#b63d35",healthy:"#147955",unknown:"#a95a08"};
+    const strokes = {A:"#1769aa",B:"#7251b5"};
+    let selected = 0;
+
+    function renderMap(s) {
+      const map=document.querySelector("#map");
+      map.replaceChildren(svg("title",{id:"map-title"}));
+      map.querySelector("title").textContent=`${s.title}, synthetic map`;
+      const defs=svg("defs"), pattern=svg("pattern",{id:"grid",width:32,height:32,patternUnits:"userSpaceOnUse"});
+      pattern.append(svg("path",{d:"M32 0H0V32",fill:"none",stroke:"#e3e9e9","stroke-width":1})); defs.append(pattern); map.append(defs,svg("rect",{width:640,height:360,fill:"url(#grid)"}));
+      if(s.boundary){map.append(svg("line",{x1:320,y1:18,x2:320,y2:342,stroke:"#7251b5","stroke-width":4,"stroke-dasharray":"11 8"})); const label=svg("text",{x:330,y:35,fill:"#7251b5","font-size":12,"font-weight":800});label.textContent="H3 BORDER";map.append(label);}
+      (s.polygons||[]).forEach(path=>map.append(svg("path",{d:path,fill:"rgba(18,174,189,.12)",stroke:"#12aebd","stroke-width":4,"stroke-dasharray":"9 7"})));
+      const groups=Object.groupBy ? Object.groupBy(s.nodes,n=>n.group) : s.nodes.reduce((a,n)=>((a[n.group]??=[]).push(n),a),{});
+      Object.values(groups).forEach(group=>{if(group.length>1) for(let i=1;i<group.length;i++) map.append(svg("line",{x1:group[i-1].x,y1:group[i-1].y,x2:group[i].x,y2:group[i].y,stroke:"#91a0ab","stroke-width":2.2}));});
+      s.nodes.forEach(n=>map.append(svg("circle",{cx:n.x,cy:n.y,r:n.state==="down"?9:8,fill:fills[n.state],stroke:strokes[n.csp],"stroke-width":4})));
+      const note=svg("text",{x:16,y:342,fill:"#667584","font-size":11}); note.textContent="Synthetic layout for rule explanation; stated counts drive the decision."; map.append(note);
+    }
+
+    function renderScenario() {
+      const s=scenarios[selected];
+      document.querySelectorAll(".case-button").forEach((b,i)=>b.setAttribute("aria-pressed",i===selected));
+      document.querySelector("#case-title").textContent=s.title;
+      document.querySelector("#case-count").textContent=`Case ${selected+1} of ${scenarios.length}`;
+      document.querySelector("#case-summary").textContent=s.summary;
+      document.querySelector("#metrics").innerHTML=s.metrics.map(([value,label])=>`<div class="metric"><strong>${value}</strong><span>${label}</span></div>`).join("");
+      document.querySelector("#timeline").innerHTML=s.timeline.map(([label,start,width,tone])=>`<div class="time-row"><span>${label}</span><div class="time-track"><i class="time-bar ${tone}" style="--start:${start}%;--width:${width}%"></i></div></div>`).join("");
+      document.querySelector("#trace").innerHTML=s.trace.map(([state,text])=>`<li><b class="${state.toLowerCase()}">${state}</b><span>${text}</span></li>`).join("");
+      document.querySelector("#outcome-text").textContent=s.outcome;
+      document.querySelector("#outcome").className=`outcome ${s.tone||""}`;
+      renderMap(s);
+    }
+
+    document.querySelector("#case-picker").innerHTML=scenarios.map((s,i)=>`<button class="case-button" type="button" data-case="${i}" aria-pressed="false">${i+1}. ${s.short}</button>`).join("");
+    document.querySelectorAll(".case-button").forEach(button=>button.addEventListener("click",()=>{selected=Number(button.dataset.case);renderScenario();}));
+    document.querySelector("#papers").innerHTML=papers.map((p,i)=>`<details><summary><span class="paper-number">${String(i+1).padStart(2,"0")}</span><span><strong>${p[0]}</strong><small>${p[1]}</small></span><span class="paper-action ${p[2]}">${p[2]==="now"?"use now":p[2]}</span></summary><div class="paper-body"><div><b>What transfers</b>${p[3]}</div><div><b>Why we do not copy it</b>${p[4]} <a href="${paperBase+p[5]}">Open local source</a></div></div></details>`).join("");
+
+    if(scenarios.length!==10 || papers.length!==14) throw new Error("Research brief inventory is incomplete");
+    renderScenario();
+  </script>
+</body>
+</html>

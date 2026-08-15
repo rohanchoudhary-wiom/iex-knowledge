@@ -1,0 +1,5 @@
+node_modules/
+.next/
+dist/
+public/devices.json.gz
+public/outages.geojson

@@ -38,17 +38,17 @@ outage_start_ist = MIN(member_first_fail_at_ist) per outage_id
 
 ## Required evidence
 
-Active `PROD_DB.DYNAMODB_READ.CUSTOMER_V_2` supplies the customer and device ID. `GOOGLE_ADDRESS_ID → PROD_DB.PUBLIC.T_ADDRESS.ID` supplies latitude and longitude, while `DEVICE_ID → PROD_DB.PUBLIC.T_DEVICE.DEVICE_ID` supplies the CSP ID. No `ACTIVE_BASE` rows are used. The left join to `OUTAGE_MEMBER_V3` adds affected members without dropping healthy active devices.
+The latest active `PROD_DB.DYNAMODB_READ.CUSTOMER_V_2` row supplies the customer, device ID, and plan expiry. The cohort keeps a device only when a valid successful ping exists in the rolling 15-day snapshot and `PLAN_EXPIRY_TIME > last_successful_ping_ist + 12 hours`. `GOOGLE_ADDRESS_ID → PROD_DB.PUBLIC.T_ADDRESS.ID` supplies latitude and longitude, while `DEVICE_ID → PROD_DB.PUBLIC.T_DEVICE.DEVICE_ID` supplies the CSP ID. No `ACTIVE_BASE` rows are used, and outage membership cannot restore an ineligible device.
 
 ## CSV-only implementation
 
 `sql/outage_devices.sql` is one SELECT joining address, device, and outage data. It exports `data/input/outage_devices.csv`, the only file read by `attribute.py`. Mobile is retained for reconciliation but never used by the rules, and the identifier-bearing CSV is ignored by Git.
 
-This is deliberately a current-active baseline. Add dated fleet snapshots only if historical denominators become a validated requirement.
+This is deliberately a latest-state eligible baseline, not a historical reconstruction. Add dated fleet snapshots only if historical denominators become a validated requirement.
 
 ## Minimal build plan
 
-1. Export active Customer V2 devices, T_ADDRESS coordinates, CSP IDs, and outage membership using the single SELECT.
+1. Export eligible Customer V2 devices, T_ADDRESS coordinates, CSP IDs, and eligible outage membership using the single SELECT.
 2. Count distinct active devices per CSP-H3 and affected devices per comparison event.
 3. Use affected share alone to assign each valid CSP-H3 as `DOWN` or `UP`; there is no device-count threshold.
 4. Match temporally overlapping source outages so CSPs and zones can be compared.

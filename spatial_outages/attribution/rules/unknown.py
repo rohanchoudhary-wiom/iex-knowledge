@@ -10,4 +10,4 @@ class UnknownRule:
             rule = "R6_NO_NEIGHBOR_CSP"
         else:
             rule = "R6_AMBIGUOUS_PATTERN"
-        return Decision("UNKNOWN", rule, "MEDIUM")
+        return Decision("UNKNOWN", rule, "LOW", "LOCAL")

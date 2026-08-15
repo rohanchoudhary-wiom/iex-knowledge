@@ -11,5 +11,5 @@ class LocalCspFaultRule:
             and context.affected_h3_share < context.thresholds.almost_all_h3_share
             and context.neighbor_up
         ):
-            return Decision("LOCAL CSP FAULT", "R5_NEIGHBOR_CSP_UP", context.cause_confidence)
+            return Decision("CSP_SIDE", "R5_NEIGHBOR_CSP_UP", context.cause_confidence, "LOCAL")
         return None

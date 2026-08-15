@@ -11,8 +11,8 @@ class AttributionEvent:
 
     @property
     def start(self) -> datetime:
-        return min(outage.start for outage in self.outages)
+        return min(outage.trigger_time for outage in self.outages)
 
     @property
     def end(self) -> datetime:
-        return max(outage.start for outage in self.outages)
+        return max(outage.trigger_time for outage in self.outages)

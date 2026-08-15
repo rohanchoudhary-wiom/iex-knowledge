@@ -2,6 +2,8 @@
 
 Generated on **13 August 2026** using the current active-device baseline and outage-member failures from the preceding 15 days.
 
+> Historical snapshot: these counts predate the plan-expiry cohort gate added on 15 August 2026. The current export retains only devices whose plan expires strictly more than 12 hours after their last valid successful ping; see [`README.md`](README.md).
+
 ## Executive summary
 
 | Measure | Result |

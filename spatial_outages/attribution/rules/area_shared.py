@@ -9,5 +9,5 @@ class AreaSharedRule:
             and context.cross_h3_comparison
             and not context.shared_down_elsewhere
         ):
-            return Decision("AREA-SHARED", "R2_MULTI_CSP_ONE_H3", context.cause_confidence)
+            return Decision("UNKNOWN", "R2_MULTI_CSP_ONE_H3", "LOW", "LOCAL")
         return None

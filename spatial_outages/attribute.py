@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Assign spatial-outage buckets from one CSV")
+    parser = argparse.ArgumentParser(description="Build one attribution per detected outage")
     parser.add_argument("--input", type=Path, default=ROOT / "data/input/outage_devices.csv")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "data/output")
     parser.add_argument("--min-affected-share", type=float, default=0.7)
@@ -34,7 +34,7 @@ def main() -> int:
         parser.error(str(exc))
     fleet, outages = read_input(args.input)
     write_outputs(args.output_dir, AttributionEngine(thresholds).classify(fleet, outages))
-    device_count = sum(len(devices) for devices in fleet.values())
+    device_count = sum(device.is_active for device in fleet.values())
     print(f"classified {len(outages):,} outages from {device_count:,} active devices")
     return 0
 

@@ -9,5 +9,5 @@ class RegionalRule:
             and context.cross_h3_comparison
             and context.shared_down_elsewhere
         ):
-            return Decision("REGIONAL", "R3_MULTI_CSP_MULTI_H3", context.cause_confidence)
+            return Decision("UNKNOWN", "R3_MULTI_CSP_MULTI_H3", "LOW", "REGIONAL")
         return None

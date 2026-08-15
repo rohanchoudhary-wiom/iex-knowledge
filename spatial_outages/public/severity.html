@@ -84,6 +84,27 @@
     .lane { margin: 14px 0 6px; color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
     .join-note { margin: 12px 0 0; padding: 10px 12px; border-left: 4px solid var(--orange); background: var(--orange-bg); }
 
+    .algorithm { margin-bottom: 16px; padding: 25px; border: 1px solid #93c5fd; border-radius: 17px; background: linear-gradient(135deg,#fff 0%,#eff6ff 100%); }
+    .algorithm > p { max-width: 820px; margin: -6px 0 18px; color: var(--muted); }
+    .algorithm-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .algorithm-step { min-width: 0; padding: 15px; border: 1px solid #bfd5f6; border-radius: 11px; background: #fff; }
+    .algorithm-number { display: grid; width: 32px; height: 32px; margin-bottom: 10px; place-items: center; border-radius: 50%; background: var(--blue); color: #fff; font-size: 11px; font-weight: 900; }
+    .algorithm-step h3 { margin-bottom: 5px; color: var(--blue); font-size: 15px; }
+    .algorithm-step p { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+    .algorithm-step code { display: block; padding: 7px 8px; border-radius: 6px; background: var(--slate-bg); color: var(--ink); }
+    .timing-check { margin-top: 12px; padding: 16px; border: 1px solid #f3c17d; border-radius: 11px; background: var(--orange-bg); }
+    .timing-check > p { margin: -2px 0 12px; color: var(--muted); }
+    .timing-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .timing-parts + .timing-parts { margin-top: 8px; }
+    .timing-part { padding: 10px; border-radius: 7px; background: #fff; }
+    .timing-part strong { display: block; margin-bottom: 3px; color: var(--orange); }
+    .timing-part code { display: block; }
+    .timing-examples { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .timing-example { padding: 9px 10px; border-radius: 7px; background: #fff; font-weight: 800; }
+    .timing-example.accept { color: var(--green); }
+    .timing-example.reject { color: var(--red); }
+    .algorithm-rule { margin: 12px 0 0; padding: 12px 14px; border-left: 5px solid var(--green); background: var(--green-bg); color: var(--green); font-weight: 850; }
+
     .polygon-panel { margin-bottom: 16px; padding: 25px; border: 1px solid #e2c39f; border-radius: 17px; background: linear-gradient(135deg,#fff 0%,#fff8ef 100%); }
     .polygon-panel > p { margin: -6px 0 18px; color: var(--muted); }
     .polygon-visuals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -157,6 +178,8 @@
     @media screen and (max-width: 900px) {
       header { grid-template-columns: 1fr; align-items: start; }
       .source-row, .output-row, .polygon-visuals, .playbooks { grid-template-columns: 1fr; }
+      .algorithm-flow { grid-template-columns: repeat(2, 1fr); }
+      .timing-parts { grid-template-columns: 1fr; }
       .equation { grid-template-columns: 1fr; }
       .equation-op { transform: rotate(90deg); }
       .gate-notes { grid-template-columns: 1fr; }
@@ -170,6 +193,8 @@
       h1 { font-size: 34px; }
       .panel, .definition, .funnel, .polygon-panel { padding: 17px; }
       .playbook-grid { grid-template-columns: 1fr; }
+      .algorithm-flow { grid-template-columns: 1fr; }
+      .timing-examples { grid-template-columns: 1fr; }
       .playbook-cell.full { grid-column: auto; }
       .map { min-height: 310px; }
       .overlap-map { min-height: 390px; }
@@ -202,7 +227,7 @@
         <h1>How device downtime becomes an attributed outage</h1>
         <p>A device going down is raw evidence. The engine first exits CSP-wide failures, then groups the remaining spatially connected devices into fluid polygons for local attribution.</p>
       </div>
-      <div class="target"><strong>Two decision grains</strong>CSP × time window first. Fluid polygon for everything that remains.</div>
+      <div class="target"><strong>Two decision levels</strong>CSP × time window first. Fluid polygon for everything that remains.</div>
     </header>
 
     <div class="opening">
@@ -214,7 +239,7 @@
 
     <section class="definition" aria-labelledby="definition-title">
       <h2 id="definition-title">Definition of an outage polygon</h2>
-      <p>After CSP-wide exits are removed and candidate overlaps are reconciled, a fluid candidate becomes an outage polygon only when both gates pass.</p>
+      <p>After CSP-wide exits are removed, nearby failed devices form outage groups. When two polygons are compared in time, their outage intervals must intersect for at least 15 minutes.</p>
       <div class="equation" role="img" aria-label="At least ten eligible devices and at least seventy-five percent of them affected">
         <div class="equation-part"><strong>Eligible devices ≥ 10</strong><small>Distinct remaining active devices whose coordinates fall inside the candidate geometry.</small></div>
         <div class="equation-op">AND</div>
@@ -223,7 +248,7 @@
       <div class="gate-notes">
         <div class="gate-note"><strong>10 is the polygon minimum</strong><small>9 eligible devices can never produce an outage polygon.</small></div>
         <div class="gate-note"><strong>75% is inclusive</strong><small>8 of 10 is 80% and qualifies; 7 of 10 does not.</small></div>
-        <div class="gate-note"><strong>Concurrency supports grouping</strong><small>Downtime overlap joins related devices but does not replace the 75% gate.</small></div>
+        <div class="gate-note"><strong>Polygon time overlap is 15 minutes</strong><small>Use the intersection of the two polygon outage intervals. Time outside that intersection is not capped.</small></div>
       </div>
     </section>
 
@@ -233,8 +258,8 @@
       <div class="funnel-steps">
         <div class="funnel-step"><span>DEVICE</span><div><strong>Validate device evidence</strong><small>Resolve one active location, CSP, failure interval, and source outage membership per <code>device_id</code>.</small></div><code>raw device facts</code></div>
         <div class="funnel-step"><span>CSP</span><div><strong>Filter ISP / OLT first</strong><small>For each CSP and evaluation time, exit when concurrently down active devices divided by all active CSP devices is at least 80%.</small></div><code>CSP-wide exit</code></div>
-        <div class="funnel-step"><span>BFS</span><div><strong>Grow polygons from what remains</strong><small>Exclude the exited CSP-window from both seeds and the eligible baseline, then connect spatial neighbors with overlapping downtime.</small></div><code>remaining devices → polygons</code></div>
-        <div class="funnel-step"><span>RECON</span><div><strong>Reconcile overlapping candidates</strong><small>Merge only with a valid cross-component device-and-time edge; otherwise keep polygons separate and assign shared eligible devices once.</small></div><code>merge / partition</code></div>
+        <div class="funnel-step"><span>GROUP</span><div><strong>Group failed devices</strong><small>After removing provider-wide failures, connect nearby failed devices whose downtime overlaps.</small></div><code>nearby failures → groups</code></div>
+        <div class="funnel-step"><span>OVERLAP</span><div><strong>Count every device once</strong><small>Failed devices stay with their connected group. A working device inside multiple polygons goes to the group with the nearest failed device.</small></div><code>one device → one group</code></div>
         <div class="funnel-step"><span>GATE</span><div><strong>Qualify each polygon</strong><small>Require at least 10 remaining eligible devices and at least 75% affected. Therefore 8 of 10 qualifies.</small></div><code>outage / noise</code></div>
         <div class="funnel-step"><span>CAUSE</span><div><strong>Decide fibre, power, regional, or unknown</strong><small>Use the CSP states and shared timing inside the remaining polygon.</small></div><code>bucket + confidence</code></div>
       </div>
@@ -246,9 +271,9 @@
       <h2 id="architecture-title">Technical architecture</h2>
       <div class="lane">Sources</div>
       <div class="source-row">
-        <div class="box source"><strong>Active customer devices</strong><small><code>CUSTOMER_V_2</code>: device ID, active status, Google address ID</small></div>
-        <div class="box source"><strong>Coordinates and CSP</strong><small><code>T_ADDRESS</code> supplies latitude/longitude; <code>T_DEVICE</code> supplies CSP ID</small></div>
-        <div class="box source"><strong>Outage membership</strong><small><code>OUTAGE_MEMBER_V3</code>: device ID, source outage ID, failure and recovery times</small></div>
+        <div class="box source"><strong>Active customer devices</strong><small>Device ID, active status, and address key</small></div>
+        <div class="box source"><strong>Coordinates and CSP</strong><small>Latitude, longitude, and CSP ID</small></div>
+        <div class="box source"><strong>Outage membership</strong><small>Device ID, source outage ID, and failure and recovery times</small></div>
       </div>
       <div class="lane">Outputs</div>
       <div class="output-row">
@@ -257,14 +282,46 @@
         <div class="box output"><strong>Attribution</strong><small>Bucket, confidence, compared CSPs, matched rule</small></div>
         <div class="box output"><strong>Audit evidence</strong><small>Source outage IDs, related polygons, overlap reason, gates, and geometry versions</small></div>
       </div>
-      <p class="join-note"><strong>One source flow:</strong> active <code>CUSTOMER_V_2</code> devices join to <code>T_ADDRESS</code> through <code>GOOGLE_ADDRESS_ID</code>, to <code>T_DEVICE</code> through <code>DEVICE_ID</code>, and to <code>OUTAGE_MEMBER_V3</code> through <code>DEVICE_ID</code>. CSP-wide exits keep their CSP-window key; polygons receive a derived ID. Both retain every source <code>outage_id</code>.</p>
+      <p class="join-note"><strong>One source flow:</strong> active customer devices link to their location, CSP, and outage membership through the device and address keys. CSP-wide exits keep their CSP-window key; polygons receive a derived ID. Both retain every source <code>outage_id</code>.</p>
     </section>
 
-    <div class="stage"><span>2</span><div><h2>Grow fluid polygons after the CSP-wide exit</h2><p>BFS sees only the remaining device universe and follows spatially connected concurrent failures.</p></div></div>
+    <div class="stage"><span>2</span><div><h2>Run the device-first outage algorithm</h2><p>Eight ordered steps turn device downtime into stable outage events.</p></div></div>
+
+    <section class="algorithm" aria-labelledby="algorithm-title">
+      <h2 id="algorithm-title">Outage detection algorithm</h2>
+      <p>Run these steps in order for every evaluation window. Devices form the groups; polygons never decide which failures belong together.</p>
+      <div class="algorithm-flow">
+        <article class="algorithm-step"><span class="algorithm-number">1</span><h3>Measure each provider</h3><p>Calculate the share of active devices currently down.</p><code>down_rate = down / active</code></article>
+        <article class="algorithm-step"><span class="algorithm-number">2</span><h3>Remove wide failures</h3><p>Publish the provider-wide outage and exclude its devices from local detection.</p><code>down_rate &gt;= 80%</code></article>
+        <article class="algorithm-step"><span class="algorithm-number">3</span><h3>Connect nearby failures</h3><p>Connect failed devices that are close enough and have overlapping downtime.</p><code>distance &lt;= MAX_DISTANCE<br>device time overlap &gt; 0</code></article>
+        <article class="algorithm-step"><span class="algorithm-number">4</span><h3>Form outage groups</h3><p>Every connected set of failed devices becomes one local outage candidate.</p><code>connected group = candidate</code></article>
+        <article class="algorithm-step"><span class="algorithm-number">5</span><h3>Draw the polygons</h3><p>Draw one map outline around each connected device group.</p><code>group → polygon</code></article>
+        <article class="algorithm-step"><span class="algorithm-number">6</span><h3>Count each device once</h3><p>Failed devices keep their group. A shared working device goes to the nearest failed device.</p><code>distance tie → lower polygon ID</code></article>
+        <article class="algorithm-step"><span class="algorithm-number">7</span><h3>Qualify the outage</h3><p>Reject groups that fail either minimum.</p><code>active &gt;= 10<br>affected_rate &gt;= 75%</code></article>
+        <article class="algorithm-step"><span class="algorithm-number">8</span><h3>Track it across time</h3><p>Polygon versions keep one event ID when the time, member, and area checks pass.</p><code>time &gt;= 15 min<br>members &gt;= 50%<br>area &gt;= 20%</code></article>
+      </div>
+      <div class="timing-check">
+        <h3>15-minute polygon-time overlap</h3>
+        <p>Compare the outage interval of polygon A with the outage interval of polygon B.</p>
+        <div class="timing-parts">
+          <div class="timing-part"><strong>Overlap start</strong><code>later polygon start</code></div>
+          <div class="timing-part"><strong>Overlap end</strong><code>earlier polygon end</code></div>
+          <div class="timing-part"><strong>Overlap duration</strong><code>overlap end - overlap start</code></div>
+        </div>
+        <div class="timing-examples">
+          <div class="timing-example accept">Pass: A = 4:15–6:00, B = 5:45–7:00 → overlap = 5:45–6:00 = 15 minutes</div>
+          <div class="timing-example reject">Fail: A = 4:15–6:00, B = 5:46–7:00 → overlap = 14 minutes</div>
+        </div>
+        <p class="data-note"><strong>No exclusive-time limit:</strong> time before or after the intersection does not reduce a valid 15-minute overlap.</p>
+      </div>
+      <p class="algorithm-rule">Core rule: devices determine outage groups. Polygons only describe them. Polygon overlap never merges outages.</p>
+    </section>
+
+    <div class="stage"><span>3</span><div><h2>See how grouping and overlap work</h2><p>Device proximity forms local groups. Polygon outage intervals determine whether two versions overlap in time.</p></div></div>
 
     <section class="polygon-panel" aria-labelledby="bfs-title">
-      <h2 id="bfs-title">Device graph → connected component → outage polygon</h2>
-      <p>Each remaining active device is a located node. Devices belonging to an exited CSP-window are excluded from both BFS seeds and the polygon denominator. Downtime overlap determines whether a spatial edge can be crossed.</p>
+      <h2 id="bfs-title">Failed devices → connected groups → outage polygons</h2>
+      <p>Remove devices from provider-wide failures first. For everything left, connect nearby failed devices with overlapping downtime and draw one polygon around each connected group.</p>
       <div class="polygon-visuals">
         <div class="map single-map" role="img" aria-label="Single outage polygon containing sixteen eligible devices, twelve affected and four healthy">
           <div class="map-title">Single qualified polygon</div>
@@ -318,118 +375,44 @@
         </div>
       </div>
       <div class="overlap-box">
-        <h3>Overlap reconciliation: geometry triggers the check; device and time evidence decides</h3>
-        <div class="table-wrap"><table><thead><tr><th>Overlap case</th><th>Action</th><th>Then</th></tr></thead><tbody>
-          <tr><td>Same evaluation time with a valid cross-component spatial edge and overlapping downtime</td><td><strong>MERGED</strong></td><td>Union the components, rebuild the geometry, and recalculate unique counts.</td></tr>
-          <tr><td>Same evaluation time, but geometry is the only connection</td><td><strong>PARTITIONED</strong></td><td>Keep both polygons. Affected devices stay with their BFS component; assign each shared healthy eligible device to the nearest affected component, with polygon ID as the tie-breaker.</td></tr>
-          <tr><td>Qualifying polygons in consecutive windows have spatial and member continuity</td><td><strong>TIME_STITCHED</strong></td><td>Keep each polygon version and attach them to one evolving <code>event_id</code>.</td></tr>
+        <h3>When two outage areas overlap</h3>
+        <p><strong>Main rule:</strong> devices determine outage groups. Polygons only describe those groups. Polygon overlap never merges outages.</p>
+        <div class="table-wrap"><table><thead><tr><th>What we find</th><th>Decision</th><th>What happens next</th></tr></thead><tbody>
+          <tr><td>Two polygons overlap in the same time window.</td><td><strong>Keep the device groups</strong> (<code>PARTITIONED</code>)</td><td>Failed devices stay with their connected group. A working device inside both polygons goes to the group with the nearest failed device. If distance ties, the lower polygon ID wins.</td></tr>
+          <tr><td>Two polygon outage intervals overlap for at least 15 minutes, with at least 50% failed-device overlap and at least 20% area overlap.</td><td><strong>Continue the event</strong> (<code>TIME_STITCHED</code>)</td><td>Keep both polygon versions and give them the same <code>event_id</code>. Treat 50% and 20% as starting values to back-test.</td></tr>
         </tbody></table></div>
-        <p class="data-note"><strong>Gate after reconciliation:</strong> merge the components or give every shared device one owner before calculating either polygon's eligible count and affected share.</p>
+        <p class="data-note"><strong>No shape-only merge:</strong> spatial overlap alone never joins polygons. The time comparison uses the actual intersection of their outage intervals.</p>
       </div>
-      <details>
-        <summary>Implementation pseudocode <span>CSP filter, BFS, overlap reconciliation, and polygon gate</span></summary>
-        <pre>active_devices = active CUSTOMER_V_2 devices with CSP and location
-down_devices = active devices concurrently down at evaluation_time
-excluded_csp_windows = empty set
-
-FOR EACH csp_id IN active_devices:
-  csp_eligible = active_devices for csp_id
-  csp_down = down_devices for csp_id
-  csp_down_share = COUNT(csp_down) / COUNT(csp_eligible)
-
-  IF CSP_BASELINE_IS_COMPLETE(csp_id)
-     AND csp_down_share &gt;= 0.80:
-    EMIT ISP_OLT with csp_id, counts, share, time, and source outage IDs
-    ADD csp_id + evaluation_time TO excluded_csp_windows
-
-remaining_active_devices = active_devices outside excluded_csp_windows
-affected_nodes = down_devices outside excluded_csp_windows
-visited = empty set
-candidates = empty list
-
-FOR EACH seed IN affected_nodes:
-  IF seed IN visited:
-    CONTINUE
-  queue = [seed]
-  component = empty set
-
-  WHILE queue is not empty:
-    current = POP_FRONT(queue)
-    IF current IN visited:
-      CONTINUE
-    ADD current TO visited AND component
-
-    FOR EACH neighbor IN SPATIAL_NEIGHBORS(current):
-      IF neighbor IN affected_nodes
-         AND DOWNTIME_OVERLAPS(neighbor, component)
-         AND neighbor NOT IN visited:
-        APPEND neighbor TO queue
-
-  APPEND component + CONCAVE_HULL(component coordinates) TO candidates
-
-resolved_candidates = empty list
-
-FOR EACH same_time_group IN GEOMETRY_OVERLAP_COMPONENTS(candidates):
-  IF HAS_VALID_CROSS_COMPONENT_EDGE(same_time_group)
-     AND DOWNTIME_OVERLAPS(same_time_group):
-    resolved = MERGE_COMPONENTS_AND_REBUILD_GEOMETRY(same_time_group)
-    resolved.overlap_action = MERGED
-  ELSE:
-    KEEP affected devices with their original BFS component
-    ASSIGN each shared healthy eligible device
-      TO nearest affected component
-      USING polygon_id as the tie-breaker
-    resolved = KEEP_SEPARATE(same_time_group)
-    resolved.overlap_action = PARTITIONED if group overlaps, otherwise NONE
-
-  APPEND every resolved candidate TO resolved_candidates
-
-FOR EACH candidate IN resolved_candidates:
-  eligible_devices = uniquely owned active devices for candidate
-  affected_devices = affected devices owned by candidate's component
-  affected_share = affected_devices / eligible_devices
-
-  IF eligible_devices &gt;= 10 AND affected_share &gt;= 0.75:
-    EMIT outage_polygon_version with overlap evidence
-  ELSE:
-    EMIT noise_candidate
-
-FOR EACH emitted outage_polygon_version:
-  IF OVERLAPS_CONSECUTIVE_VERSION(outage_polygon_version)
-     AND MEMBER_CONTINUITY_MATCHES(outage_polygon_version):
-    ATTACH both versions TO the same event_id
-    SET overlap_action = TIME_STITCHED</pre>
-      </details>
     </section>
 
-    <div class="stage"><span>3</span><div><h2>Use explicit decision-grain tables</h2><p>CSP × time window is evaluated first; the remaining derived tables are polygon-level.</p></div></div>
+    <div class="stage"><span>4</span><div><h2>Use explicit decision-grain tables</h2><p>CSP × time window is evaluated first; the remaining derived tables are polygon-level.</p></div></div>
 
     <section class="panel" aria-labelledby="data-title">
       <h2 id="data-title">Data contracts and calculation logic</h2>
 
       <details>
-        <summary>1. Active device inventory <span>existing Customer V2 source flow</span></summary>
+        <summary>1. Active device inventory <span>existing active-device source</span></summary>
         <div class="table-wrap"><table><thead><tr><th>Column</th><th>Rule</th></tr></thead><tbody>
-          <tr><td><code>device_id</code></td><td>From active <code>CUSTOMER_V_2</code>; stable atomic identifier with exactly one active record per run.</td></tr>
-          <tr><td><code>csp_id</code></td><td>From <code>T_DEVICE</code>; mandatory and single-valued.</td></tr>
-          <tr><td><code>latitude</code>, <code>longitude</code></td><td>From <code>T_ADDRESS</code> through <code>GOOGLE_ADDRESS_ID</code>; used for adjacency and point-in-polygon counting.</td></tr>
-          <tr><td><code>is_active</code></td><td>Derived from Customer V2 status; active devices form the CSP baseline and, after exclusions, the polygon denominator.</td></tr>
+          <tr><td><code>device_id</code></td><td>From the active-device source; stable atomic identifier with exactly one active record per run.</td></tr>
+          <tr><td><code>csp_id</code></td><td>From the device provider record; mandatory and single-valued.</td></tr>
+          <tr><td><code>latitude</code>, <code>longitude</code></td><td>From the device address record; used for adjacency and point-in-polygon counting.</td></tr>
+          <tr><td><code>is_active</code></td><td>Derived from the customer-device status; active devices form the CSP baseline and, after exclusions, the polygon denominator.</td></tr>
         </tbody></table></div>
       </details>
 
       <details>
-        <summary>2. Device downtime intervals <span>existing OUTAGE_MEMBER_V3 source</span></summary>
+        <summary>2. Device downtime intervals <span>existing outage-membership source</span></summary>
         <div class="table-wrap"><table><thead><tr><th>Column</th><th>Rule</th></tr></thead><tbody>
           <tr><td><code>outage_id</code></td><td>Preserve all source lineage attached to the device and final polygon.</td></tr>
-          <tr><td><code>device_id</code></td><td>Join directly to active <code>CUSTOMER_V_2.DEVICE_ID</code>.</td></tr>
+          <tr><td><code>device_id</code></td><td>Join directly to the active-device source.</td></tr>
           <tr><td><code>member_first_fail_at_ist</code></td><td>Start of the device downtime interval.</td></tr>
-          <tr><td><code>recovered_at_ist</code></td><td>Available from the same <code>OUTAGE_MEMBER_V3</code> table when interval overlap is required.</td></tr>
+          <tr><td><code>recovered_at_ist</code></td><td>Available from the same outage-membership source when interval overlap is required.</td></tr>
         </tbody></table></div>
-        <p class="data-note"><strong>No new source:</strong> use the existing <code>OUTAGE_MEMBER_V3</code> membership. Add its recovery timestamp to the export only when precise interval overlap is needed for BFS grouping.</p>
+        <p class="data-note"><strong>No new source:</strong> use the existing outage membership. Add its recovery timestamp to the export only when precise shared downtime is needed for device grouping.</p>
       </details>
 
       <details>
-        <summary>3. CSP × time-window pre-filter <span>first decision grain</span></summary>
+        <summary>3. CSP × time-window pre-filter <span>first decision level</span></summary>
         <div class="table-wrap"><table><thead><tr><th>Column</th><th>Rule</th></tr></thead><tbody>
           <tr><td><code>csp_id</code>, <code>evaluation_time</code></td><td>Decision key for one concurrent CSP state check.</td></tr>
           <tr><td><code>eligible_devices_csp</code></td><td>All active devices for the CSP in the defined analysis scope; never derive this denominator from outage rows.</td></tr>
@@ -437,7 +420,7 @@ FOR EACH emitted outage_polygon_version:
           <tr><td><code>csp_down_share</code></td><td><code>down_devices_csp / eligible_devices_csp</code>; exit as ISP / OLT when at least 0.80.</td></tr>
           <tr><td><code>baseline_complete</code></td><td>If false, do not infer ISP / OLT from an incomplete CSP denominator.</td></tr>
         </tbody></table></div>
-        <p class="data-note"><strong>Exclusion rule:</strong> an exited CSP-window remains in the audit output but is removed from both the BFS input and the downstream eligible-device baseline.</p>
+        <p class="data-note"><strong>Exclusion rule:</strong> an exited CSP-window remains in the audit output but is removed from both local device grouping and the downstream active-device count.</p>
       </details>
 
       <details>
@@ -450,19 +433,21 @@ FOR EACH emitted outage_polygon_version:
       </details>
 
       <details>
-        <summary>5. Outage polygon fact <span>remaining-device decision grain</span></summary>
+        <summary>5. Outage polygon fact <span>one row per outage area and time window</span></summary>
         <div class="table-wrap"><table class="wide"><thead><tr><th>Column</th><th>Calculation</th><th>Purpose</th></tr></thead><tbody>
           <tr><td><code>outage_polygon_id</code></td><td>Derived stable ID for one resolved component and evaluation window.</td><td>Primary key for this polygon version.</td></tr>
           <tr><td><code>event_id</code>, <code>polygon_version</code></td><td>Stable event ID plus the ordered geometry version for time-stitched polygons.</td><td>Prevents one evolving outage from being counted repeatedly.</td></tr>
-          <tr><td><code>geometry</code></td><td>Versioned concave hull or equivalent boundary around member devices.</td><td>Map display and eligible population lookup.</td></tr>
-          <tr><td><code>eligible_devices</code></td><td>Distinct remaining active devices uniquely owned by the polygon after overlap reconciliation.</td><td>Must be at least 10; no double counting.</td></tr>
-          <tr><td><code>affected_devices</code></td><td>Distinct affected devices owned by the resolved BFS component.</td><td>Impact numerator; never shared across same-time polygons.</td></tr>
+          <tr><td><code>outage_started_at</code>, <code>outage_ended_at</code></td><td>Start and end of the polygon's outage interval. Use the evaluation time as the temporary end while it is still live.</td><td>Provides the interval used for polygon-time overlap.</td></tr>
+          <tr><td><code>geometry</code></td><td>Versioned outline drawn around the group's devices.</td><td>Map display and active-device lookup.</td></tr>
+          <tr><td><code>eligible_devices</code></td><td>Active devices assigned to this area after the overlap decision. A device can belong to only one area at a time.</td><td>Must be at least 10; no double counting.</td></tr>
+          <tr><td><code>affected_devices</code></td><td>Distinct failed devices in the connected group.</td><td>Impact numerator; never shared across same-time polygons.</td></tr>
           <tr><td><code>affected_share</code></td><td><code>affected_devices / eligible_devices</code>.</td><td>Must reach 75%; therefore 8/10 qualifies.</td></tr>
-          <tr><td><code>overlap_minutes</code></td><td>Shared interval among component device failures.</td><td>Grouping and evidence only; it does not replace the 75% gate.</td></tr>
-          <tr><td><code>overlap_action</code></td><td><code>MERGED</code>, <code>PARTITIONED</code>, <code>TIME_STITCHED</code>, or <code>NONE</code>.</td><td>Auditable reconciliation result.</td></tr>
+          <tr><td><code>polygon_time_overlap_minutes</code></td><td>Earlier polygon end minus later polygon start, floored at zero.</td><td>Must be at least 15 minutes for the time-overlap check.</td></tr>
+          <tr><td><code>overlap_action</code></td><td><code>PARTITIONED</code>, <code>TIME_STITCHED</code>, or <code>NONE</code>.</td><td>Records whether shared devices were assigned once or polygon versions were linked across time.</td></tr>
           <tr><td><code>related_polygon_ids</code>, <code>overlap_area</code></td><td>Candidate/version IDs examined together and their geometric intersection.</td><td>Reproduce the overlap decision.</td></tr>
-          <tr><td><code>overlap_reason</code></td><td>Matched cross-edge, unique ownership rule, or time-continuity evidence.</td><td>Plain-English decision explanation.</td></tr>
-          <tr><td><code>member_device_ids</code></td><td>Devices discovered by BFS.</td><td>Reproducibility and investigation.</td></tr>
+          <tr><td><code>member_overlap_ratio</code>, <code>spatial_overlap_ratio</code></td><td>Shared failed devices divided by the smaller failed group; shared area divided by the smaller polygon area.</td><td>Decide whether consecutive versions keep the same event ID.</td></tr>
+          <tr><td><code>overlap_reason</code></td><td>The polygon intervals, shared failed devices, and shared area that led to the decision.</td><td>Plain-English decision explanation.</td></tr>
+          <tr><td><code>member_device_ids</code></td><td>Failed devices in the connected group.</td><td>Reproducibility and investigation.</td></tr>
           <tr><td><code>source_outage_ids</code></td><td>All source outages contributing members.</td><td>Lineage; never overwritten.</td></tr>
         </tbody></table></div>
       </details>
@@ -495,6 +480,8 @@ POLYGON_PUBLISHED
 outage_polygon_id
 event_id
 polygon_version
+outage_started_at
+outage_ended_at
 geometry
 bucket
 confidence
@@ -506,10 +493,12 @@ member_device_ids
 eligible_devices
 affected_devices
 affected_share
-overlap_minutes
+polygon_time_overlap_minutes
 overlap_action
 related_polygon_ids
 overlap_area
+member_overlap_ratio
+spatial_overlap_ratio
 overlap_reason
 compared_csp_count
 matched_rule
@@ -518,12 +507,12 @@ geometry_version</pre>
       </details>
     </section>
 
-    <div class="stage"><span>4</span><div><h2>Apply the CSP-wide rule before polygon rules</h2><p>The top-down contract prevents a CSP-wide event from fragmenting into misleading local polygons.</p></div></div>
+    <div class="stage"><span>5</span><div><h2>Apply the CSP-wide rule before polygon rules</h2><p>The top-down contract prevents a CSP-wide event from fragmenting into misleading local polygons.</p></div></div>
 
     <section class="panel rules" aria-labelledby="rules-title">
       <h2 id="rules-title">Ordered outage attribution contract</h2>
       <div class="table-wrap"><table class="rule-table wide"><thead><tr><th>Order</th><th>If</th><th>Then</th><th>Evidence retained</th></tr></thead><tbody>
-        <tr><th>0</th><td>At least 80% of one CSP's complete active-device baseline is concurrently down at the evaluation time.</td><td class="result-cell">ISP / OLT</td><td>CSP ID, evaluation time, eligible and down device IDs, share, and source outages. Exclude the CSP-window before BFS.</td></tr>
+        <tr><th>0</th><td>At least 80% of one CSP's complete active-device baseline is concurrently down at the evaluation time.</td><td class="result-cell">ISP / OLT</td><td>CSP ID, evaluation time, eligible and down device IDs, share, and source outages. Exclude the CSP-window before local grouping.</td></tr>
         <tr><th>1</th><td>A remaining candidate has fewer than 10 eligible devices, or its affected share is below 75%.</td><td class="result-cell noise">NOISE</td><td>Eligible count, affected count, affected share, and failed gate.</td></tr>
         <tr><th>2</th><td>Two or more comparable CSPs are affected together inside one remaining polygon.</td><td class="result-cell">POWER / SHARED AREA</td><td>CSP-level device counts, shares, and overlapping intervals inside the polygon.</td></tr>
         <tr><th>3</th><td>The same multi-CSP pattern appears across multiple separated outage polygons in one event.</td><td class="result-cell">REGIONAL</td><td>Polygon IDs, geometries, compared CSPs, and event timing.</td></tr>
@@ -533,12 +522,12 @@ geometry_version</pre>
       <p class="guardrail"><strong>Safety boundary:</strong> `FIBRE`, `POWER`, and `ISP / OLT` are inferred failure domains. Confirm the physical cause with OLT alarms, power telemetry, tickets, or field evidence.</p>
     </section>
 
-    <div class="stage"><span>5</span><div><h2>Dry-run every outage outcome</h2><p>The first run is CSP × time window; the remaining runs use fluid polygons.</p></div></div>
+    <div class="stage"><span>6</span><div><h2>Dry-run every outage outcome</h2><p>The first run is CSP × time window; the remaining runs use fluid polygons.</p></div></div>
 
     <section class="primer" aria-labelledby="primer-title">
       <h2 id="primer-title">How to read the dry runs</h2>
       <ul>
-        <li><strong>First:</strong> a CSP at or above 80% down exits before BFS.</li>
+        <li><strong>First:</strong> a CSP at or above 80% down exits before local device grouping.</li>
         <li><strong>Then:</strong> remaining polygons need 10 devices and 75% affected.</li>
         <li><strong>Compare:</strong> CSP Alpha is evaluated beside CSP Beta.</li>
       </ul>
@@ -547,7 +536,7 @@ geometry_version</pre>
     <div class="playbooks">
       <section class="panel playbook">
         <div class="playbook-head"><div><h2>ISP / OLT</h2><p>A CSP-wide device pattern exits before any polygon is built.</p></div><span class="bucket-number">Outcome 1 of 6</span></div>
-        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">Alpha: 82/100 concurrently down = 82% → ISP / OLT → exclude Alpha-window before BFS</p></div><div class="playbook-cell"><h3>Why</h3><p>Alpha's complete CSP baseline is available and its device-down share exceeds the 80% first-stage gate.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead><tbody><tr><td>Eligible active devices</td><td>100</td><td>80</td></tr><tr><td>Concurrently down devices</td><td>82</td><td>12</td></tr><tr><td>CSP down share</td><td>82% → exit</td><td>15% → retain</td></tr></tbody></table><p class="result">Result: ISP / OLT for CSP Alpha · CSP Beta remains eligible for BFS</p></div></div>
+        <div class="playbook-grid"><div class="playbook-cell"><h3>Decision path</h3><p class="decision-path">Alpha: 82/100 concurrently down = 82% → ISP / OLT → exclude Alpha-window before local grouping</p></div><div class="playbook-cell"><h3>Why</h3><p>Alpha's complete CSP baseline is available and its device-down share exceeds the 80% first-stage gate.</p></div><div class="playbook-cell full"><table class="dry-run"><thead><tr><th>Measure</th><th>CSP Alpha</th><th>CSP Beta</th></tr></thead><tbody><tr><td>Eligible active devices</td><td>100</td><td>80</td></tr><tr><td>Concurrently down devices</td><td>82</td><td>12</td></tr><tr><td>CSP down share</td><td>82% → exit</td><td>15% → retain</td></tr></tbody></table><p class="result">Result: ISP / OLT for CSP Alpha · CSP Beta remains eligible for local grouping</p></div></div>
       </section>
 
       <section class="panel playbook noise">
@@ -576,7 +565,7 @@ geometry_version</pre>
       </section>
     </div>
 
-    <p class="guardrail"><strong>Implementation status:</strong> this is the target design. The runtime still needs the CSP baseline filter, overlap reconciliation, and polygon outputs; back-test the 80%, 10-device, 75%, merge, partition, and time-stitch behavior before production.</p>
+    <p class="guardrail"><strong>Implementation status:</strong> this is the target design. The runtime still needs the CSP-wide filter, connected-device grouping, unique device ownership, and outage-area outputs. Back-test the distance, 15-minute polygon-time overlap, 50% member-overlap, and 20% area-overlap settings before production.</p>
   </main>
 
   <script>

@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist/client dist/server dist/.openai && cp -R public/. dist/client/ && cp worker.js dist/server/index.js && cp .openai/hosting.json dist/.openai/hosting.json"
+  }
+}

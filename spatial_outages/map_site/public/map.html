@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>India outage atlas</title>
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    :root { --ink:#12213f; --muted:#607086; --line:#dce4ee; --blue:#165dcc; --blue-soft:#eaf2ff; --teal:#0d7b70; --paper:#fff; --page:#f2f5f9; --shadow:0 16px 44px rgba(18,33,63,.14); }
+    * { box-sizing:border-box; }
+    html, body { height:100%; }
+    body { margin:0; overflow:hidden; color:var(--ink); background:var(--page); font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button, input, select { font:inherit; }
+    .shell { display:grid; grid-template-rows:auto 1fr; height:100%; }
+    header { display:flex; gap:20px; align-items:center; justify-content:space-between; padding:14px 20px; color:#fff; background:linear-gradient(120deg,#10234c,#155a87 72%,#0e746d); box-shadow:0 3px 16px rgba(14,31,66,.25); }
+    .brand { display:flex; gap:12px; align-items:center; min-width:0; }
+    .mark { display:grid; flex:0 0 38px; width:38px; height:38px; place-items:center; border:1px solid rgba(255,255,255,.28); border-radius:11px; background:rgba(255,255,255,.1); font-weight:900; }
+    h1 { margin:0; font-size:19px; line-height:1.15; letter-spacing:-.02em; }
+    header p { margin:2px 0 0; color:#d9e8f5; font-size:12px; }
+    .snapshot { color:#d9e8f5; font-size:12px; text-align:right; }
+    main { position:relative; min-height:0; }
+    #map { width:100%; height:100%; background:#dfe9f2; }
+    .panel { position:absolute; z-index:500; top:16px; left:16px; width:min(340px,calc(100% - 32px)); padding:16px; border:1px solid rgba(255,255,255,.9); border-radius:15px; background:rgba(255,255,255,.96); box-shadow:var(--shadow); backdrop-filter:blur(10px); }
+    .panel-head { display:flex; gap:10px; align-items:start; justify-content:space-between; margin-bottom:12px; }
+    .panel h2 { margin:0; font-size:17px; }
+    .mode { display:inline-flex; margin-top:3px; padding:3px 7px; border-radius:999px; color:var(--blue); background:var(--blue-soft); font-size:10px; font-weight:850; letter-spacing:.04em; text-transform:uppercase; }
+    .total { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    label { display:block; color:#34435a; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+    input, select { width:100%; min-height:40px; margin-top:5px; padding:8px 9px; border:1px solid #c9d5e3; border-radius:9px; color:var(--ink); background:#fff; }
+    input:focus, select:focus, button:focus-visible { outline:3px solid rgba(22,93,204,.2); outline-offset:1px; }
+    .full { grid-column:1 / -1; }
+    .actions { display:flex; gap:8px; margin-top:12px; }
+    button { min-height:38px; padding:8px 11px; border:1px solid #bdcce0; border-radius:9px; color:var(--ink); background:#fff; cursor:pointer; font-weight:750; }
+    button:hover { border-color:var(--blue); color:var(--blue); }
+    button.primary { flex:1; border-color:var(--blue); color:#fff; background:var(--blue); }
+    .result { display:flex; gap:10px; align-items:center; margin-top:12px; padding:10px 11px; border-radius:10px; background:#f5f8fc; }
+    .result strong { font-size:20px; line-height:1; }
+    .result span { color:var(--muted); font-size:12px; }
+    .device-result { margin-top:10px; padding:10px 11px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    .device-head { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .device-head strong { font-size:12px; }
+    .device-head span { color:var(--muted); font-size:11px; }
+    .device-counts { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+    .device-counts span { padding:6px; border-radius:7px; color:#fff; font-size:10px; font-weight:800; text-align:center; }
+    .device-counts b { display:block; font-size:15px; line-height:1.1; }
+    .legend { display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:12px; padding-top:11px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+    .legend span::before { content:""; display:inline-block; width:9px; height:9px; margin-right:5px; border-radius:3px; background:var(--color); }
+    .legend.devices span::before { border-radius:50%; }
+    .empty { display:none; margin-top:10px; color:#9a5400; font-size:12px; }
+    .leaflet-popup-content { margin:13px 15px; min-width:210px; }
+    .popup-title { margin-bottom:7px; font-size:15px; font-weight:850; }
+    .popup-grid { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:12px; }
+    .popup-grid span:nth-child(odd) { color:var(--muted); }
+    .leaflet-control-attribution { font-size:9px; }
+    @media (max-width:650px) {
+      header { padding:11px 13px; }
+      .snapshot { display:none; }
+      .panel { top:10px; left:10px; width:calc(100% - 20px); max-height:46%; overflow:auto; padding:13px; }
+      .fields { grid-template-columns:1fr 1fr; }
+      .leaflet-top.leaflet-left { top:48%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><div class="mark" aria-hidden="true">IX</div><div><h1>India outage atlas</h1><p>One detected outage → one polygon → one attribution</p></div></div>
+      <div class="snapshot" id="snapshot">Loading snapshot…</div>
+    </header>
+    <main>
+      <div id="map" role="application" aria-label="Interactive map of outage polygons across India"></div>
+      <section class="panel" aria-labelledby="filters-title">
+        <div class="panel-head"><div><h2 id="filters-title">Outage starts</h2><span class="mode">Selected lookback window</span></div><span class="total" id="total"></span></div>
+        <div class="fields">
+          <label>Date<input id="date" type="date"></label>
+          <label>Time<input id="time" type="time" step="60"></label>
+          <label>Look back<select id="window"><option value="1">1 hour</option><option value="3">3 hours</option><option value="6" selected>6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></label>
+          <label>Cause<select id="cause"><option value="ALL">All causes</option><option value="CSP_SIDE">CSP side</option><option value="ACCESS_FIBRE">Access fibre</option><option value="PREMISE_POWER">Premise power</option><option value="UNKNOWN">Unknown</option></select></label>
+          <label class="full">CSP<input id="csp" type="search" list="csp-options" placeholder="All CSPs" autocomplete="off"><datalist id="csp-options"></datalist></label>
+        </div>
+        <div class="actions"><button class="primary" id="show">Show outages</button><button id="fit">Fit results</button><button id="india" aria-label="Reset map to India">India</button></div>
+        <div class="result" aria-live="polite"><strong id="count">—</strong><span id="summary">Loading outage polygons</span></div>
+        <div class="device-result" aria-live="polite">
+          <div class="device-head"><strong id="device-title">Click a polygon</strong><span id="device-note">to show every device inside</span></div>
+          <div class="device-counts"><span style="background:#dc2626"><b id="down-count">—</b>Outage</span><span style="background:#138a55"><b id="healthy-count">—</b>Ping seen</span><span style="background:#64748b"><b id="unknown-count">—</b>No ping proof</span></div>
+        </div>
+        <div class="empty" id="empty">No outage started inside this window. Try a wider lookback.</div>
+        <div class="legend" aria-label="Root cause legend">
+          <span style="--color:#165dcc">CSP side</span><span style="--color:#d97706">Access fibre</span><span style="--color:#a16207">Premise power</span><span style="--color:#64748b">Unknown</span>
+        </div>
+        <div class="legend devices" aria-label="Device status legend"><span style="--color:#dc2626">Outage member</span><span style="--color:#138a55">Successful ping in outage hour</span><span style="--color:#64748b">Active, no positive proof</span></div>
+      </section>
+    </main>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    const INDIA = [[6.4,68.1],[37.6,97.5]];
+    const colors = { CSP_SIDE:'#165dcc', ACCESS_FIBRE:'#d97706', PREMISE_POWER:'#a16207', UNKNOWN:'#64748b' };
+    const map = L.map('map',{preferCanvas:true,zoomControl:false,minZoom:4,maxZoom:16,maxBounds:[[1,62],[42,103]],maxBoundsViscosity:.65});
+    L.control.zoom({position:'bottomright'}).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    map.fitBounds(INDIA,{padding:[12,12]});
+    let data, layer, deviceData, devicePromise, deviceLayer, selectedOutageId, visible = [], cspLookup = new Map();
+    const byId = id => document.getElementById(id);
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const localInput = iso => iso.slice(0,16);
+    const popup = p => `<div class="popup-title">Outage ${escapeHtml(p.outage_id)}</div><div class="popup-grid"><span>Started</span><b>${new Date(p.started_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</b><span>CSP</span><b>${escapeHtml(p.csp_name)} · ${escapeHtml(p.csp_id)}</b><span>Cause</span><b>${escapeHtml(p.root_cause)}</b><span>Confidence</span><b>${escapeHtml(p.confidence)}</b><span>Extent</span><b>${escapeHtml(p.spatial_extent)}</b><span>Area</span><b>${p.area_km2.toLocaleString('en-IN')} km²</b><span>Outage members</span><b>${p.unhealthy_devices.toLocaleString('en-IN')}</b><span>Located members</span><b>${p.located_devices.toLocaleString('en-IN')}</b><span>Revision</span><b>${p.revision}</b></div>`;
+    const devicePopup = (device,status) => `<div class="popup-title">${escapeHtml(device[4])}</div><div class="popup-grid"><span>Status</span><b>${{down:'Outage member',healthy:'Successful ping',unknown:'No positive ping proof'}[status]}</b><span>Address</span><b>${escapeHtml(device[5])}</b></div>`;
+    function clearDevices() {
+      selectedOutageId = undefined;
+      if (deviceLayer) deviceLayer.remove();
+      deviceLayer = undefined;
+      byId('device-title').textContent = 'Click a polygon';
+      byId('device-note').textContent = 'to show every device inside';
+      for (const id of ['down-count','healthy-count','unknown-count']) byId(id).textContent = '—';
+    }
+    function pointInPolygon(latitude,longitude,ring) {
+      let inside = false;
+      for (let i=0,j=ring.length-1;i<ring.length;j=i++) {
+        const [xi,yi] = ring[i], [xj,yj] = ring[j];
+        if ((yi > latitude) !== (yj > latitude) && longitude < (xj-xi)*(latitude-yi)/(yj-yi)+xi) inside = !inside;
+      }
+      return inside;
+    }
+    const loadDevices = () => deviceData ? Promise.resolve(deviceData) : (devicePromise ||= fetch('/devices.json.gz').then(response => {
+      if (!response.ok) throw new Error('Device data could not be loaded');
+      return new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).json();
+    }).then(payload => deviceData = payload));
+    async function showDevices(feature) {
+      const p = feature.properties;
+      selectedOutageId = p.outage_id;
+      map.stop();
+      map.fitBounds(L.geoJSON(feature).getBounds(),{padding:[70,70],maxZoom:14,animate:false});
+      byId('device-title').textContent = `Outage ${p.outage_id}`;
+      byId('device-note').textContent = 'Loading device evidence…';
+      try {
+        const payload = await loadDevices();
+        if (selectedOutageId !== p.outage_id) return;
+        if (deviceLayer) deviceLayer.remove();
+        const ring = feature.geometry.coordinates[0];
+        const members = new Set(payload.members[p.outage_id] || []);
+        const hour = Math.floor((new Date(p.started_at) - new Date(payload.metadata.hour_start_ist)) / 3600000);
+        const markers = [], counts = {down:0,healthy:0,unknown:0};
+        for (let index=0;index<payload.devices.length;index++) {
+          const device = payload.devices[index];
+          const down = members.has(index);
+          if (!down && (!device[2] || !pointInPolygon(device[0],device[1],ring))) continue;
+          let status = 'down';
+          if (!down) {
+            const bitmap = device[3] && hour >= 0 && hour < payload.metadata.hour_count ? atob(device[3]) : '';
+            status = bitmap && (bitmap.charCodeAt(hour >> 3) & (1 << (hour & 7))) ? 'healthy' : 'unknown';
+          }
+          counts[status]++;
+          const color = {down:'#dc2626',healthy:'#138a55',unknown:'#64748b'}[status];
+          markers.push(L.circleMarker([device[0],device[1]],{radius:status === 'down' ? 5 : 4,stroke:false,fillColor:color,fillOpacity:status === 'unknown' ? .55 : .9}).bindPopup(devicePopup(device,status)));
+        }
+        deviceLayer = L.featureGroup(markers).addTo(map);
+        byId('down-count').textContent = counts.down.toLocaleString('en-IN');
+        byId('healthy-count').textContent = counts.healthy.toLocaleString('en-IN');
+        byId('unknown-count').textContent = counts.unknown.toLocaleString('en-IN');
+        byId('device-note').textContent = `${markers.length.toLocaleString('en-IN')} located devices shown`;
+      } catch (error) {
+        byId('device-note').textContent = error.message;
+      }
+    }
+    function render(fit=false) {
+      if (!data) return;
+      clearDevices();
+      const end = new Date(`${byId('date').value}T${byId('time').value}:00+05:30`);
+      const start = new Date(end - Number(byId('window').value) * 3600000);
+      const cause = byId('cause').value;
+      const cspLabel = byId('csp').value.trim();
+      const csp = cspLookup.get(cspLabel.toLowerCase()) || cspLabel.toLowerCase();
+      visible = data.features.filter(feature => {
+        const when = new Date(feature.properties.started_at);
+        return when > start && when <= end && (cause === 'ALL' || feature.properties.root_cause === cause) && (!csp || feature.properties.csp_id.toLowerCase() === csp);
+      });
+      if (layer) layer.remove();
+      const polygons = L.geoJSON({type:'FeatureCollection',features:visible},{
+        style: feature => ({color:colors[feature.properties.root_cause] || colors.UNKNOWN,weight:2,fillOpacity:feature.properties.confidence === 'HIGH' ? .42 : .24}),
+        onEachFeature: (feature, polygon) => polygon.bindPopup(popup(feature.properties)).on('click',() => showDevices(feature))
+      });
+      layer = polygons.addTo(map);
+      byId('count').textContent = visible.length.toLocaleString('en-IN');
+      byId('summary').textContent = `outages${csp ? ` for ${cspLabel}` : ''} started in the previous ${byId('window').value} hours`;
+      byId('empty').style.display = visible.length ? 'none' : 'block';
+      if (fit && visible.length) map.fitBounds(layer.getBounds(),{padding:[28,28],maxZoom:11,animate:false});
+    }
+    fetch('/outages.geojson').then(response => {
+      if (!response.ok) throw new Error('Data could not be loaded');
+      return response.json();
+    }).then(payload => {
+      data = payload;
+      const latest = localInput(data.metadata.max_started_at);
+      byId('date').value = latest.slice(0,10);
+      byId('date').min = data.metadata.min_started_at.slice(0,10);
+      byId('date').max = latest.slice(0,10);
+      byId('time').value = latest.slice(11,16);
+      byId('snapshot').textContent = `${data.features.length.toLocaleString('en-IN')} polygons · IST snapshot`;
+      byId('total').textContent = `${data.features.length.toLocaleString('en-IN')} total`;
+      const csps = [...new Map(data.features.map(feature => [feature.properties.csp_id,feature.properties.csp_name])).entries()].sort((a,b) => a[1].localeCompare(b[1]));
+      for (const [csp,name] of csps) {
+        const option = document.createElement('option');
+        option.value = `${name} · ${csp}`;
+        cspLookup.set(option.value.toLowerCase(),csp.toLowerCase());
+        cspLookup.set(csp.toLowerCase(),csp.toLowerCase());
+        byId('csp-options').append(option);
+      }
+      render(true);
+    }).catch(error => {
+      byId('count').textContent = '0';
+      byId('summary').textContent = error.message;
+      byId('empty').style.display = 'block';
+    });
+    byId('show').addEventListener('click',() => render(false));
+    byId('fit').addEventListener('click',() => render(true));
+    byId('india').addEventListener('click',() => map.fitBounds(INDIA,{padding:[12,12]}));
+    for (const id of ['date','time','window','cause','csp']) byId(id).addEventListener('change',() => render(false));
+  </script>
+</body>
+</html>

@@ -11,5 +11,5 @@ class IspOltRule:
             and context.affected_h3_share >= context.thresholds.almost_all_h3_share
             and context.neighboring_csps
         ):
-            return Decision("ISP / OLT", "R4_CSP_WIDE", context.cause_confidence)
+            return Decision("CSP_SIDE", "R4_CSP_WIDE", context.cause_confidence, "REGIONAL")
         return None
