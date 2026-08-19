@@ -1,0 +1,6 @@
+“Is my Internet down?”: Sifting through User-Affecting Outages with Google Trends
+Ege Cem Kirci, Martin Vahlensieck, Laurent Vanbever
+ACM IMC 2022
+DOI: https://doi.org/10.1145/3517745.3561428
+
+No legal open-access PDF was indexed on 2026-08-14. The authors' publication page redirects to the ACM DOI.

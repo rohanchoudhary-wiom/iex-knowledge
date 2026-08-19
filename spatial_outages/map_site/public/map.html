@@ -38,6 +38,10 @@
     .result { display:flex; gap:10px; align-items:center; margin-top:12px; padding:10px 11px; border-radius:10px; background:#f5f8fc; }
     .result strong { font-size:20px; line-height:1; }
     .result span { color:var(--muted); font-size:12px; }
+    .hint { margin:10px 0 0; color:var(--muted); font-size:12px; }
+    .detail-panel { width:min(380px,calc(100% - 32px)); }
+    .detail-panel .panel-head { margin:12px 0; }
+    .detail-grid { padding:10px 0 12px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
     .device-result { margin-top:10px; padding:10px 11px; border:1px solid var(--line); border-radius:10px; background:#fff; }
     .device-head { display:flex; gap:8px; align-items:center; justify-content:space-between; }
     .device-head strong { font-size:12px; }
@@ -71,7 +75,7 @@
     </header>
     <main>
       <div id="map" role="application" aria-label="Interactive map of outage polygons across India"></div>
-      <section class="panel" aria-labelledby="filters-title">
+      <section class="panel" id="overview-panel" aria-labelledby="filters-title">
         <div class="panel-head"><div><h2 id="filters-title">Outage starts</h2><span class="mode">Selected lookback window</span></div><span class="total" id="total"></span></div>
         <div class="fields">
           <label>Date<input id="date" type="date"></label>
@@ -82,13 +86,19 @@
         </div>
         <div class="actions"><button class="primary" id="show">Show outages</button><button id="fit">Fit results</button><button id="india" aria-label="Reset map to India">India</button></div>
         <div class="result" aria-live="polite"><strong id="count">—</strong><span id="summary">Loading outage polygons</span></div>
-        <div class="device-result" aria-live="polite">
-          <div class="device-head"><strong id="device-title">Click a polygon</strong><span id="device-note">to show every device inside</span></div>
-          <div class="device-counts"><span style="background:#dc2626"><b id="down-count">—</b>Outage</span><span style="background:#138a55"><b id="healthy-count">—</b>Ping seen</span><span style="background:#64748b"><b id="unknown-count">—</b>No ping proof</span></div>
-        </div>
+        <p class="hint">Click a polygon to open its device-level detail view.</p>
         <div class="empty" id="empty">No outage started inside this window. Try a wider lookback.</div>
         <div class="legend" aria-label="Root cause legend">
           <span style="--color:#165dcc">CSP side</span><span style="--color:#d97706">Access fibre</span><span style="--color:#a16207">Premise power</span><span style="--color:#64748b">Unknown</span>
+        </div>
+      </section>
+      <section class="panel detail-panel" id="detail-panel" aria-labelledby="device-title" hidden>
+        <button id="back">← Back to outages</button>
+        <div class="panel-head"><div><h2 id="device-title">Outage detail</h2><span class="mode">Device evidence</span></div></div>
+        <div class="popup-grid detail-grid" id="detail-content"></div>
+        <div class="device-result" aria-live="polite">
+          <div class="device-head"><strong>Devices inside polygon</strong><span id="device-note">Loading…</span></div>
+          <div class="device-counts"><span style="background:#dc2626"><b id="down-count">—</b>Outage</span><span style="background:#138a55"><b id="healthy-count">—</b>Ping seen</span><span style="background:#64748b"><b id="unknown-count">—</b>No ping proof</span></div>
         </div>
         <div class="legend devices" aria-label="Device status legend"><span style="--color:#dc2626">Outage member</span><span style="--color:#138a55">Successful ping in outage hour</span><span style="--color:#64748b">Active, no positive proof</span></div>
       </section>
@@ -106,14 +116,14 @@
     const byId = id => document.getElementById(id);
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const localInput = iso => iso.slice(0,16);
-    const popup = p => `<div class="popup-title">Outage ${escapeHtml(p.outage_id)}</div><div class="popup-grid"><span>Started</span><b>${new Date(p.started_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</b><span>CSP</span><b>${escapeHtml(p.csp_name)} · ${escapeHtml(p.csp_id)}</b><span>Cause</span><b>${escapeHtml(p.root_cause)}</b><span>Confidence</span><b>${escapeHtml(p.confidence)}</b><span>Extent</span><b>${escapeHtml(p.spatial_extent)}</b><span>Area</span><b>${p.area_km2.toLocaleString('en-IN')} km²</b><span>Outage members</span><b>${p.unhealthy_devices.toLocaleString('en-IN')}</b><span>Located members</span><b>${p.located_devices.toLocaleString('en-IN')}</b><span>Revision</span><b>${p.revision}</b></div>`;
-    const devicePopup = (device,status) => `<div class="popup-title">${escapeHtml(device[4])}</div><div class="popup-grid"><span>Status</span><b>${{down:'Outage member',healthy:'Successful ping',unknown:'No positive ping proof'}[status]}</b><span>Address</span><b>${escapeHtml(device[5])}</b></div>`;
+    const polygonStyle = feature => ({color:colors[feature.properties.root_cause] || colors.UNKNOWN,weight:2,fillOpacity:feature.properties.confidence === 'HIGH' ? .42 : .24});
+    const outageDetails = p => `<span>Started</span><b>${new Date(p.started_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</b><span>CSP</span><b>${escapeHtml(p.csp_name)} · ${escapeHtml(p.csp_id)}</b><span>Cause</span><b>${escapeHtml(p.root_cause)}</b><span>Confidence</span><b>${escapeHtml(p.confidence)}</b><span>Extent</span><b>${escapeHtml(p.spatial_extent)}</b><span>Area</span><b>${p.area_km2.toLocaleString('en-IN')} km²</b><span>Outage members</span><b>${p.unhealthy_devices.toLocaleString('en-IN')}</b><span>Located members</span><b>${p.located_devices.toLocaleString('en-IN')}</b><span>Revision</span><b>${p.revision}</b>`;
+    const devicePopup = (device,status) => `<div class="popup-title">${escapeHtml(device[4])}</div><div class="popup-grid"><span>Status</span><b>${{down:'Outage member',healthy:'Successful ping',unknown:'No positive ping proof'}[status]}</b><span>CSP</span><b>${escapeHtml(device[6])} · ${escapeHtml(device[7])}</b><span>Address</span><b>${escapeHtml(device[5])}</b></div>`;
     function clearDevices() {
       selectedOutageId = undefined;
       if (deviceLayer) deviceLayer.remove();
       deviceLayer = undefined;
-      byId('device-title').textContent = 'Click a polygon';
-      byId('device-note').textContent = 'to show every device inside';
+      byId('device-note').textContent = 'Loading…';
       for (const id of ['down-count','healthy-count','unknown-count']) byId(id).textContent = '—';
     }
     function pointInPolygon(latitude,longitude,ring) {
@@ -131,10 +141,16 @@
     async function showDevices(feature) {
       const p = feature.properties;
       selectedOutageId = p.outage_id;
-      map.stop();
-      map.fitBounds(L.geoJSON(feature).getBounds(),{padding:[70,70],maxZoom:14,animate:false});
+      byId('overview-panel').hidden = true;
+      byId('detail-panel').hidden = false;
       byId('device-title').textContent = `Outage ${p.outage_id}`;
+      byId('detail-content').innerHTML = outageDetails(p);
+      map.stop();
+      if (layer) layer.remove();
+      layer = L.geoJSON(feature,{style:item => ({...polygonStyle(item),interactive:false})}).addTo(map);
+      map.fitBounds(layer.getBounds(),{padding:[70,70],maxZoom:14,animate:false});
       byId('device-note').textContent = 'Loading device evidence…';
+      console.assert(byId('overview-panel').hidden && !byId('detail-panel').hidden && !layer.getLayers().some(item => item.getPopup()),'Polygon click must open a popup-free detail view');
       try {
         const payload = await loadDevices();
         if (selectedOutageId !== p.outage_id) return;
@@ -168,6 +184,8 @@
     function render(fit=false) {
       if (!data) return;
       clearDevices();
+      byId('overview-panel').hidden = false;
+      byId('detail-panel').hidden = true;
       const end = new Date(`${byId('date').value}T${byId('time').value}:00+05:30`);
       const start = new Date(end - Number(byId('window').value) * 3600000);
       const cause = byId('cause').value;
@@ -179,8 +197,8 @@
       });
       if (layer) layer.remove();
       const polygons = L.geoJSON({type:'FeatureCollection',features:visible},{
-        style: feature => ({color:colors[feature.properties.root_cause] || colors.UNKNOWN,weight:2,fillOpacity:feature.properties.confidence === 'HIGH' ? .42 : .24}),
-        onEachFeature: (feature, polygon) => polygon.bindPopup(popup(feature.properties)).on('click',() => showDevices(feature))
+        style: polygonStyle,
+        onEachFeature: (feature, polygon) => polygon.on('click',() => showDevices(feature))
       });
       layer = polygons.addTo(map);
       byId('count').textContent = visible.length.toLocaleString('en-IN');
@@ -217,6 +235,7 @@
     byId('show').addEventListener('click',() => render(false));
     byId('fit').addEventListener('click',() => render(true));
     byId('india').addEventListener('click',() => map.fitBounds(INDIA,{padding:[12,12]}));
+    byId('back').addEventListener('click',() => render(true));
     for (const id of ['date','time','window','cause','csp']) byId(id).addEventListener('change',() => render(false));
   </script>
 </body>

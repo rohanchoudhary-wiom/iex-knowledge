@@ -101,6 +101,8 @@ def main() -> None:
             ping_bitmap(row, byte_count) if byte_count else "",
             row.get("customer_name", "").strip() or "Name unavailable",
             row.get("customer_address", "").strip() or "Address unavailable",
+            csp_names.get(row["csp_id"], row["csp_id"]),
+            row["csp_id"],
         ]
         for _, row in located
     ]
@@ -126,7 +128,7 @@ def main() -> None:
     }
     device_target = target.with_name("devices.json.gz")
     serialized = json.dumps(device_payload, separators=(",", ":"))
-    assert all(len(device) == 6 for device in devices)
+    assert all(len(device) == 8 for device in devices)
     device_target.write_bytes(gzip.compress(serialized.encode(), compresslevel=9))
     target.with_name("devices.json").unlink(missing_ok=True)
     print(f"wrote {len(features):,} outage polygons to {target}")

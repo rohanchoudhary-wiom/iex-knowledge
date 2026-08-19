@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proposal: Local Sub-outage Attribution</title>
+  <style>
+    :root {
+      --ink: #13232d;
+      --muted: #5f6d73;
+      --paper: #f4f1e9;
+      --card: #fffdf8;
+      --navy: #102d3b;
+      --teal: #148477;
+      --teal-soft: #dff1ec;
+      --orange: #e8773d;
+      --orange-soft: #fbe8dc;
+      --yellow: #f5c451;
+      --line: #d8d5cd;
+      --shadow: 0 14px 38px rgba(16, 45, 59, .10);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .9em;
+    }
+    .shell { width: min(1160px, calc(100% - 40px)); margin: 0 auto; }
+    .section { padding: 78px 0; }
+    .section + .section { border-top: 1px solid var(--line); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 650px;
+      margin-bottom: 20px;
+      font-size: clamp(46px, 6.2vw, 80px);
+      line-height: .98;
+      letter-spacing: -.055em;
+    }
+    h2 {
+      margin-bottom: 12px;
+      font-size: clamp(31px, 4vw, 48px);
+      line-height: 1.05;
+      letter-spacing: -.04em;
+    }
+    h3 { margin-bottom: 8px; font-size: 21px; line-height: 1.2; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { width: 24px; height: 3px; content: ""; background: currentColor; }
+    .section-head { max-width: 760px; margin-bottom: 34px; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 19px; }
+
+    .hero {
+      padding: 34px 0 72px;
+      overflow: hidden;
+      color: #fff;
+      background:
+        radial-gradient(circle at 84% 16%, rgba(245, 196, 81, .18), transparent 28%),
+        linear-gradient(135deg, #0d2633, #123b49);
+    }
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 64px;
+      color: #dce9e9;
+      font-size: 13px;
+    }
+    .brand { font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+    .snapshot { padding: 7px 11px; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; }
+    .hero-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 58px; align-items: center; }
+    .hero .eyebrow { color: var(--yellow); }
+    .hero-copy > p { max-width: 600px; margin-bottom: 24px; color: #dce7e7; font-size: 20px; }
+    .hero-promise {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 15px;
+      color: #fff;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 12px;
+      font-weight: 750;
+    }
+    .hero-promise b { color: var(--yellow); }
+
+    .case-visual {
+      padding: 26px;
+      color: var(--ink);
+      background: var(--card);
+      border-radius: 24px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.28);
+    }
+    .visual-head { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 24px; }
+    .visual-head span { color: var(--muted); font-size: 13px; font-weight: 750; text-transform: uppercase; }
+    .visual-head code { color: var(--navy); font-weight: 850; }
+    .cluster-stage {
+      display: grid;
+      grid-template-columns: 1fr 110px 1fr;
+      align-items: center;
+      min-height: 178px;
+      padding: 18px 12px;
+      background: #f4f6f3;
+      border-radius: 18px;
+    }
+    .cluster { text-align: center; }
+    .dot-cloud {
+      position: relative;
+      width: 122px;
+      height: 88px;
+      margin: 0 auto 8px;
+      border: 2px solid currentColor;
+      border-radius: 48% 52% 45% 55%;
+    }
+    .cluster.a { color: var(--teal); }
+    .cluster.b { color: var(--orange); }
+    .dot {
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      background: currentColor;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    .dot:nth-child(1) { left: 22%; top: 24%; }
+    .dot:nth-child(2) { left: 53%; top: 18%; }
+    .dot:nth-child(3) { left: 67%; top: 53%; }
+    .dot:nth-child(4) { left: 34%; top: 61%; }
+    .dot:nth-child(5) { left: 47%; top: 40%; }
+    .cluster b { display: block; color: var(--ink); font-size: 14px; }
+    .cluster small { color: var(--muted); }
+    .gap { position: relative; color: var(--muted); text-align: center; font-size: 12px; font-weight: 800; }
+    .gap::before { display: block; height: 2px; margin-bottom: 8px; content: ""; background: repeating-linear-gradient(90deg, #97a2a4 0 7px, transparent 7px 12px); }
+    .verdicts { display: grid; gap: 9px; margin-top: 13px; }
+    .verdict {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 13px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    .verdict b { font-size: 14px; }
+    .verdict.today { background: #edf0ef; }
+    .verdict.proposed { color: #0e5b52; background: var(--teal-soft); }
+
+    .numbers { margin-top: -28px; position: relative; z-index: 2; }
+    .number-grid { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card); border-radius: 18px; box-shadow: var(--shadow); }
+    .number { padding: 24px; }
+    .number + .number { border-left: 1px solid var(--line); }
+    .number strong { display: block; margin-bottom: 4px; color: var(--navy); font-size: 34px; line-height: 1; }
+    .number span { color: var(--muted); font-size: 14px; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .flow-card {
+      position: relative;
+      min-height: 190px;
+      padding: 23px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    .flow-card:not(:last-child)::after {
+      position: absolute;
+      top: 50%;
+      right: -21px;
+      z-index: 2;
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      content: "→";
+      color: var(--navy);
+      background: var(--yellow);
+      border-radius: 50%;
+      font-weight: 900;
+    }
+    .flow-card b { display: block; margin-bottom: 25px; color: var(--teal); font-size: 13px; text-transform: uppercase; }
+    .flow-card p { margin: 0; color: var(--muted); }
+    .branch { display: block; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--navy); font-size: 13px; font-weight: 750; }
+
+    .case-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .case-card { padding: 26px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+    .case-card.featured { border: 2px solid var(--teal); }
+    .map-key { display: flex; flex-wrap: wrap; gap: 18px; margin: -14px 0 28px; color: var(--muted); font-size: 13px; font-weight: 750; }
+    .map-key span { display: inline-flex; align-items: center; gap: 7px; }
+    .map-key i { display: inline-block; width: 24px; height: 12px; }
+    .key-parent { background: rgba(16,45,59,.08); border: 2px dashed #68777d; }
+    .key-pocket { background: rgba(20,132,119,.18); border: 3px solid rgba(20,132,119,.42); border-radius: 999px; }
+    .key-device { width: 11px !important; height: 11px !important; background: var(--teal); border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px var(--teal); }
+    .map-frame {
+      position: relative;
+      margin: 18px -10px 20px;
+      overflow: hidden;
+      background-color: #edf2ef;
+      background-image:
+        linear-gradient(rgba(16,45,59,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16,45,59,.055) 1px, transparent 1px);
+      background-size: 24px 24px;
+      border: 1px solid #d7dfda;
+      border-radius: 14px;
+    }
+    .map-frame figcaption {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      padding: 5px 8px;
+      color: var(--navy);
+      background: rgba(255,255,255,.88);
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .outage-map { display: block; width: 100%; height: auto; }
+    .parent-boundary { fill: rgba(16,45,59,.07); stroke: #68777d; stroke-width: 2; stroke-dasharray: 7 5; vector-effect: non-scaling-stroke; }
+    .cluster-hull { stroke-width: 11; stroke-linejoin: round; stroke-opacity: .32; fill-opacity: .18; vector-effect: non-scaling-stroke; }
+    .cluster-hull.c1 { fill: #148477; stroke: #148477; }
+    .cluster-hull.c2 { fill: #e8773d; stroke: #e8773d; }
+    .cluster-hull.c3 { fill: #7654b4; stroke: #7654b4; }
+    .cluster-hull.c4 { fill: #2677b8; stroke: #2677b8; }
+    .device.c1 { fill: #148477; }
+    .device.c2 { fill: #e8773d; }
+    .device.c3 { fill: #7654b4; }
+    .device.c4 { fill: #2677b8; }
+    .device { stroke: #fff; stroke-width: 2.2; paint-order: stroke; vector-effect: non-scaling-stroke; }
+    .map-label { font-size: 13px; font-weight: 900; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .map-label.c1 { fill: #0d655c; }
+    .map-label.c2 { fill: #ae4825; }
+    .map-label.c3 { fill: #5c3c91; }
+    .map-label.c4 { fill: #1f6091; }
+    .north, .scale { fill: var(--muted); stroke: var(--muted); stroke-width: 1.5; font-size: 10px; font-weight: 850; }
+    .scale path { stroke-width: 3; }
+    .case-top { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+    .case-top small { display: block; margin-bottom: 5px; color: var(--muted); }
+    .cause { padding: 7px 10px; color: #7c311d; background: var(--orange-soft); border-radius: 999px; font-size: 12px; font-weight: 850; white-space: nowrap; }
+    .cause.known { color: #0d5d54; background: var(--teal-soft); }
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 17px 0; }
+    .stat { padding: 7px 10px; color: var(--navy); background: #edf1ef; border-radius: 8px; font-size: 13px; font-weight: 800; }
+    .pockets { display: grid; gap: 7px; }
+    .pocket {
+      display: grid;
+      grid-template-columns: 94px 1fr;
+      gap: 10px;
+      align-items: baseline;
+      padding: 10px 12px;
+      background: #f7f5ef;
+      border-radius: 10px;
+    }
+    .pocket b { color: var(--teal); font-size: 13px; }
+    .pocket code { color: #3d4a50; overflow-wrap: anywhere; }
+    .proposal-tag { margin: 16px 0 0; color: var(--teal); font-weight: 850; }
+
+    .delivery { background: #e7eee9; }
+    .message-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .message {
+      padding: 28px;
+      background: var(--card);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+    .message-label { display: block; margin-bottom: 18px; color: var(--teal); font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+    .message blockquote { margin: 0; font-size: 20px; line-height: 1.4; }
+    .payload { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
+    .payload span { padding: 8px 10px; color: #fff; background: var(--navy); border-radius: 8px; font-size: 12px; font-weight: 750; }
+
+    .pilot {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 35px;
+      align-items: center;
+      padding: 36px;
+      color: #fff;
+      background: var(--navy);
+      border-radius: 20px;
+    }
+    .pilot h2 { margin-bottom: 9px; }
+    .pilot p { max-width: 760px; margin: 0; color: #d4e1e1; font-size: 18px; }
+    .pilot-badge { display: grid; width: 126px; height: 126px; place-items: center; color: var(--navy); background: var(--yellow); border-radius: 50%; text-align: center; font-weight: 900; line-height: 1.1; transform: rotate(4deg); }
+    .pilot-badge strong { display: block; font-size: 39px; }
+    footer { padding: 28px 0 40px; color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .hero-grid { gap: 40px; }
+      .number-grid, .flow { grid-template-columns: repeat(2, 1fr); }
+      .number:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+      .number:nth-child(4) { border-top: 1px solid var(--line); }
+      .flow-card::after { display: none !important; }
+    }
+    @media (max-width: 650px) {
+      .shell { width: min(100% - 24px, 1160px); }
+      .section { padding: 56px 0; }
+      .hero { padding-bottom: 56px; }
+      .topline { margin-bottom: 46px; }
+      .snapshot { display: none; }
+      .hero-copy > p, .section-head p { font-size: 17px; }
+      .case-visual { padding: 18px; }
+      .cluster-stage { grid-template-columns: 1fr 58px 1fr; padding-inline: 0; }
+      .dot-cloud { width: 94px; height: 72px; }
+      .gap { font-size: 10px; }
+      .verdict { align-items: start; flex-direction: column; gap: 2px; }
+      .number-grid, .flow, .case-grid, .message-grid, .pilot { grid-template-columns: 1fr; }
+      .number + .number { border-left: 0; border-top: 1px solid var(--line); }
+      .pocket { grid-template-columns: 1fr; gap: 3px; }
+      .pilot { text-align: center; }
+      .pilot-badge { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <div class="topline">
+        <span class="brand">IEX spatial outage review</span>
+        <span class="snapshot">Data snapshot · 15 Aug 2026</span>
+      </div>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">Proposal</span>
+          <h1>Keep the outage. Add local verdicts.</h1>
+          <p>Some parent outages contain several real device pockets far apart. If the CSP is not down across its network, split those devices into local sub-outages and explain each pocket separately.</p>
+          <span class="hero-promise"><b>One parent ID.</b> Better answers for nearby devices.</span>
+        </div>
+
+        <div class="case-visual" aria-label="Outage 3000002606 has two multi-device pockets">
+          <div class="visual-head"><span>Real case · AVI Network</span><code>Outage 3000002606</code></div>
+          <div class="cluster-stage">
+            <div class="cluster a">
+              <div class="dot-cloud" aria-hidden="true"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+              <b>Pocket A · 5 devices</b><small>within 0.76 km</small>
+            </div>
+            <div class="gap">10.0 km gap</div>
+            <div class="cluster b">
+              <div class="dot-cloud" aria-hidden="true"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+              <b>Pocket B · 4 devices</b><small>within 1.02 km</small>
+            </div>
+          </div>
+          <div class="verdicts">
+            <div class="verdict today"><span>Today</span><b>1 parent verdict · UNKNOWN / LOW</b></div>
+            <div class="verdict proposed"><span>Proposed</span><b>2 local sub-outage verdicts</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="numbers shell">
+    <div class="number-grid">
+      <div class="number"><strong>47</strong><span>outages over 5 km have 3+ devices at both ends</span></div>
+      <div class="number"><strong>37</strong><span>of those have no one-device groups at all</span></div>
+      <div class="number"><strong>7</strong><span>span more than 10 km</span></div>
+      <div class="number"><strong>1 → 2+</strong><span>parent outage to local verdicts</span></div>
+    </div>
+  </div>
+
+  <main>
+    <section class="section" id="outage-maps">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">Actual outage maps</span>
+          <h2>These are the outages.</h2>
+          <p>Every dot is a real device position. Every coloured pocket contains multiple devices.</p>
+        </div>
+        <div class="map-key" aria-label="Map legend">
+          <span><i class="key-parent"></i>Current parent polygon</span>
+          <span><i class="key-pocket"></i>Candidate sub-outage</span>
+          <span><i class="key-device"></i>Device</span>
+        </div>
+
+        <div class="case-grid">
+          <article class="case-card featured">
+            <div class="case-top"><div><small>AVI Network · 7 Aug, 10:00 IST</small><h3>Outage <code>3000002606</code></h3></div><span class="cause">UNKNOWN · LOW</span></div>
+            <div class="stats"><span class="stat">9 devices</span><span class="stat">11.2 km span</span><span class="stat">10.0 km gap</span></div>
+            <figure class="map-frame">
+              <figcaption>Real device-position plot</figcaption>
+              <svg class="outage-map" viewBox="0 0 600 260" role="img" aria-label="Actual device positions for outage 3000002606">
+                <path class="parent-boundary" d="M 170.8 204.5 L 413.5 35.5 L 417.7 36.4 L 429.2 48.6 L 197.9 199.0 L 170.8 204.5 Z"/>
+                <path class="cluster-hull c1" d="M 429.2 48.6 L 417.5 40.6 L 413.5 35.5 L 417.7 36.4 L 429.2 48.6 Z"/>
+                <path class="cluster-hull c2" d="M 170.8 204.5 L 172.2 203.9 L 193.5 195.2 L 197.9 199.0 L 170.8 204.5 Z"/>
+                <circle class="device c1" cx="420.3" cy="40.3" r="5"><title>GX131488 · Pocket A</title></circle>
+                <circle class="device c1" cx="417.7" cy="36.4" r="5"><title>GX131726 · Pocket A</title></circle>
+                <circle class="device c1" cx="417.5" cy="40.6" r="5"><title>GX132918 · Pocket A</title></circle>
+                <circle class="device c1" cx="429.2" cy="48.6" r="5"><title>GX142127 · Pocket A</title></circle>
+                <circle class="device c1" cx="413.5" cy="35.5" r="5"><title>SY095779 · Pocket A</title></circle>
+                <circle class="device c2" cx="170.8" cy="204.5" r="5"><title>GX153596 · Pocket B</title></circle>
+                <circle class="device c2" cx="193.5" cy="195.2" r="5"><title>GX23851 · Pocket B</title></circle>
+                <circle class="device c2" cx="172.2" cy="203.9" r="5"><title>GX57197 · Pocket B</title></circle>
+                <circle class="device c2" cx="197.9" cy="199.0" r="5"><title>SY081235 · Pocket B</title></circle>
+                <text class="map-label c1" x="419.7" y="23.3" text-anchor="middle">A · 5</text>
+                <text class="map-label c2" x="183.6" y="183.6" text-anchor="middle">B · 4</text>
+                <g class="north"><text x="570" y="22">N</text><path d="M570 27v22m0-22-5 8m5-8 5 8"/></g>
+                <g class="scale"><path d="M30 235h54.1"/><text x="30" y="251">2 km</text></g>
+              </svg>
+            </figure>
+            <div class="pockets">
+              <div class="pocket"><b>A · 5 devices</b><code>GX131488 · GX131726 · GX132918 · GX142127 · SY095779</code></div>
+              <div class="pocket"><b>B · 4 devices</b><code>GX153596 · GX23851 · GX57197 · SY081235</code></div>
+            </div>
+            <p class="proposal-tag">Proposed: 2 local verdicts</p>
+          </article>
+
+          <article class="case-card">
+            <div class="case-top"><div><small>Bright Soul Networks · 9 Aug, 22:45 IST</small><h3>Outage <code>3000004019</code></h3></div><span class="cause known">CSP_SIDE · MEDIUM</span></div>
+            <div class="stats"><span class="stat">15 devices</span><span class="stat">8.6 km span</span><span class="stat">7.9 km gap</span></div>
+            <figure class="map-frame">
+              <figcaption>Real device-position plot</figcaption>
+              <svg class="outage-map" viewBox="0 0 600 260" role="img" aria-label="Actual device positions for outage 3000004019">
+                <path class="parent-boundary" d="M 151.9 198.4 L 149.7 198.2 L 151.0 195.3 L 438.9 43.1 L 448.2 39.7 L 450.3 41.5 L 445.8 49.1 L 169.6 195.2 L 151.9 198.4 Z"/>
+                <path class="cluster-hull c1" d="M 443.9 49.5 L 438.9 43.1 L 448.2 39.7 L 450.3 41.5 L 445.8 49.1 L 443.9 49.5 Z"/>
+                <path class="cluster-hull c2" d="M 151.9 198.4 L 149.7 198.2 L 151.0 195.3 L 159.7 194.1 L 169.6 195.2 L 151.9 198.4 Z"/>
+                <circle class="device c1" cx="443.9" cy="49.5" r="5"><title>GX107749 · Pocket A</title></circle>
+                <circle class="device c1" cx="448.0" cy="40.5" r="5"><title>GX107811 · Pocket A</title></circle>
+                <circle class="device c1" cx="443.2" cy="48.3" r="5"><title>GX107834 · Pocket A</title></circle>
+                <circle class="device c1" cx="448.6" cy="40.5" r="5"><title>GX114921 · Pocket A</title></circle>
+                <circle class="device c1" cx="448.2" cy="39.7" r="5"><title>GX51259 · Pocket A</title></circle>
+                <circle class="device c1" cx="438.9" cy="43.1" r="5"><title>GX52246 · Pocket A</title></circle>
+                <circle class="device c1" cx="450.3" cy="41.5" r="5"><title>GX62025 · Pocket A</title></circle>
+                <circle class="device c1" cx="445.8" cy="49.1" r="5"><title>GX64918 · Pocket A</title></circle>
+                <circle class="device c2" cx="159.7" cy="194.1" r="5"><title>GX108392 · Pocket B</title></circle>
+                <circle class="device c2" cx="149.7" cy="198.2" r="5"><title>GX108400 · Pocket B</title></circle>
+                <circle class="device c2" cx="153.4" cy="196.8" r="5"><title>GX138723 · Pocket B</title></circle>
+                <circle class="device c2" cx="151.0" cy="195.3" r="5"><title>GX155749 · Pocket B</title></circle>
+                <circle class="device c2" cx="163.7" cy="195.0" r="5"><title>GX44841 · Pocket B</title></circle>
+                <circle class="device c2" cx="151.9" cy="198.4" r="5"><title>GX48539 · Pocket B</title></circle>
+                <circle class="device c2" cx="169.6" cy="195.2" r="5"><title>GX54045 · Pocket B</title></circle>
+                <text class="map-label c1" x="445.9" y="27.0" text-anchor="middle">A · 8</text>
+                <text class="map-label c2" x="157.0" y="179.1" text-anchor="middle">B · 7</text>
+                <g class="north"><text x="570" y="22">N</text><path d="M570 27v22m0-22-5 8m5-8 5 8"/></g>
+                <g class="scale"><path d="M30 235h78.6"/><text x="30" y="251">2 km</text></g>
+              </svg>
+            </figure>
+            <div class="pockets">
+              <div class="pocket"><b>A · 8 devices</b><code>GX107749 · GX107811 · GX107834 · +5</code></div>
+              <div class="pocket"><b>B · 7 devices</b><code>GX108392 · GX108400 · GX138723 · +4</code></div>
+            </div>
+            <p class="proposal-tag">Proposed: 2 local verdicts</p>
+          </article>
+
+          <article class="case-card">
+            <div class="case-top"><div><small>NEERAJ INFOTECH · 7 Aug, 06:30 IST</small><h3>Outage <code>3000002535</code></h3></div><span class="cause">UNKNOWN · LOW</span></div>
+            <div class="stats"><span class="stat">16 devices</span><span class="stat">8.2 km span</span><span class="stat">4 pockets</span></div>
+            <figure class="map-frame">
+              <figcaption>Real device-position plot</figcaption>
+              <svg class="outage-map" viewBox="0 0 600 260" role="img" aria-label="Actual device positions for outage 3000002535">
+                <path class="parent-boundary" d="M 291.0 207.1 L 269.3 149.4 L 271.9 134.1 L 272.7 130.3 L 317.5 44.2 L 330.7 33.6 L 321.2 85.7 L 295.4 204.1 L 291.0 207.1 Z"/>
+                <path class="cluster-hull c1" d="M 291.0 207.1 L 290.3 204.8 L 295.4 202.9 L 295.4 204.1 L 291.0 207.1 Z"/>
+                <path class="cluster-hull c2" d="M 281.5 165.6 L 269.3 149.4 L 271.9 134.1 L 272.7 130.3 L 281.5 165.6 Z"/>
+                <path class="cluster-hull c3" d="M 322.9 48.8 L 317.5 44.2 L 330.7 33.6 L 322.9 48.8 Z"/>
+                <path class="cluster-hull c4" d="M 321.2 85.7 L 303.3 83.4 L 305.6 80.6 L 321.2 85.7 Z"/>
+                <circle class="device c1" cx="292.5" cy="204.5" r="5"><title>GX104485 · Pocket A</title></circle>
+                <circle class="device c1" cx="293.8" cy="205.1" r="5"><title>GX30034 · Pocket A</title></circle>
+                <circle class="device c1" cx="295.4" cy="202.9" r="5"><title>GX37526 · Pocket A</title></circle>
+                <circle class="device c1" cx="291.0" cy="207.1" r="5"><title>GX41832 · Pocket A</title></circle>
+                <circle class="device c1" cx="290.3" cy="204.8" r="5"><title>GX74404 · Pocket A</title></circle>
+                <circle class="device c1" cx="295.4" cy="204.1" r="5"><title>GX75305 · Pocket A</title></circle>
+                <circle class="device c2" cx="271.9" cy="134.1" r="5"><title>GX37248 · Pocket B</title></circle>
+                <circle class="device c2" cx="281.5" cy="165.6" r="5"><title>GX57145 · Pocket B</title></circle>
+                <circle class="device c2" cx="269.3" cy="149.4" r="5"><title>SY056429 · Pocket B</title></circle>
+                <circle class="device c2" cx="272.7" cy="130.3" r="5"><title>SY087092 · Pocket B</title></circle>
+                <circle class="device c3" cx="317.5" cy="44.2" r="5"><title>GX125252 · Pocket C</title></circle>
+                <circle class="device c3" cx="330.7" cy="33.6" r="5"><title>GX20616 · Pocket C</title></circle>
+                <circle class="device c3" cx="322.9" cy="48.8" r="5"><title>GX44052 · Pocket C</title></circle>
+                <circle class="device c4" cx="321.2" cy="85.7" r="5"><title>GX42204 · Pocket D</title></circle>
+                <circle class="device c4" cx="303.3" cy="83.4" r="5"><title>GX73576 · Pocket D</title></circle>
+                <circle class="device c4" cx="305.6" cy="80.6" r="5"><title>SY069665 · Pocket D</title></circle>
+                <text class="map-label c1" x="293.1" y="187.8" text-anchor="middle">A · 6</text>
+                <text class="map-label c2" x="273.8" y="127.8" text-anchor="middle">B · 4</text>
+                <text class="map-label c3" x="323.7" y="25.2" text-anchor="middle">C · 3</text>
+                <text class="map-label c4" x="310.1" y="66.2" text-anchor="middle">D · 3</text>
+                <g class="north"><text x="570" y="22">N</text><path d="M570 27v22m0-22-5 8m5-8 5 8"/></g>
+                <g class="scale"><path d="M30 235h43.7"/><text x="30" y="251">2 km</text></g>
+              </svg>
+            </figure>
+            <div class="pockets">
+              <div class="pocket"><b>A · 6 devices</b><code>GX104485 · GX30034 · +4</code></div>
+              <div class="pocket"><b>B · 4 devices</b><code>GX37248 · GX57145 · +2</code></div>
+              <div class="pocket"><b>C · 3 devices</b><code>GX125252 · GX20616 · GX44052</code></div>
+              <div class="pocket"><b>D · 3 devices</b><code>GX42204 · GX73576 · SY069665</code></div>
+            </div>
+            <p class="proposal-tag">Proposed: 4 local verdicts</p>
+          </article>
+
+          <article class="case-card">
+            <div class="case-top"><div><small>Maa Internet Services · 5 Aug, 10:30 IST</small><h3>Outage <code>3000001629</code></h3></div><span class="cause known">CSP_SIDE · MEDIUM</span></div>
+            <div class="stats"><span class="stat">16 devices</span><span class="stat">14.4 km span</span><span class="stat">3 pockets</span></div>
+            <figure class="map-frame">
+              <figcaption>Real device-position plot</figcaption>
+              <svg class="outage-map" viewBox="0 0 600 260" role="img" aria-label="Actual device positions for outage 3000001629">
+                <path class="parent-boundary" d="M 380.5 209.1 L 205.9 41.8 L 203.0 38.4 L 211.3 32.3 L 383.4 166.4 L 384.4 167.6 L 397.0 205.9 L 396.8 206.3 L 395.0 207.5 L 380.5 209.1 Z"/>
+                <path class="cluster-hull c1" d="M 380.5 209.1 L 386.0 200.0 L 386.2 200.0 L 397.0 205.9 L 396.8 206.3 L 395.0 207.5 L 380.5 209.1 Z"/>
+                <path class="cluster-hull c2" d="M 205.9 41.8 L 203.0 38.4 L 211.3 32.3 L 205.9 41.8 Z"/>
+                <path class="cluster-hull c3" d="M 384.4 167.6 L 382.1 167.2 L 383.4 166.4 L 384.4 167.6 Z"/>
+                <circle class="device c1" cx="385.9" cy="201.5" r="5"><title>GX112334 · Pocket A</title></circle>
+                <circle class="device c1" cx="386.2" cy="200.0" r="5"><title>GX119679 · Pocket A</title></circle>
+                <circle class="device c1" cx="396.8" cy="206.2" r="5"><title>GX134187 · Pocket A</title></circle>
+                <circle class="device c1" cx="395.0" cy="207.5" r="5"><title>GX134510 · Pocket A</title></circle>
+                <circle class="device c1" cx="397.0" cy="205.9" r="5"><title>GX139787 · Pocket A</title></circle>
+                <circle class="device c1" cx="380.5" cy="209.1" r="5"><title>GX150669 · Pocket A</title></circle>
+                <circle class="device c1" cx="396.8" cy="206.3" r="5"><title>GX75866 · Pocket A</title></circle>
+                <circle class="device c1" cx="389.1" cy="204.2" r="5"><title>GX75904 · Pocket A</title></circle>
+                <circle class="device c1" cx="386.0" cy="200.0" r="5"><title>SY075188 · Pocket A</title></circle>
+                <circle class="device c1" cx="389.9" cy="206.7" r="5"><title>SY082034 · Pocket A</title></circle>
+                <circle class="device c2" cx="205.9" cy="41.8" r="5"><title>GX103084 · Pocket B</title></circle>
+                <circle class="device c2" cx="203.0" cy="38.4" r="5"><title>GX77908 · Pocket B</title></circle>
+                <circle class="device c2" cx="211.3" cy="32.3" r="5"><title>GX82808 · Pocket B</title></circle>
+                <circle class="device c3" cx="382.1" cy="167.2" r="5"><title>GX120615 · Pocket C</title></circle>
+                <circle class="device c3" cx="384.4" cy="167.6" r="5"><title>GX92847 · Pocket C</title></circle>
+                <circle class="device c3" cx="383.4" cy="166.4" r="5"><title>SY084420 · Pocket C</title></circle>
+                <text class="map-label c1" x="390.3" y="187.7" text-anchor="middle">A · 10</text>
+                <text class="map-label c2" x="206.7" y="20.5" text-anchor="middle">B · 3</text>
+                <text class="map-label c3" x="383.3" y="150.1" text-anchor="middle">C · 3</text>
+                <g class="north"><text x="570" y="22">N</text><path d="M570 27v22m0-22-5 8m5-8 5 8"/></g>
+                <g class="scale"><path d="M30 235h35.7"/><text x="30" y="251">2 km</text></g>
+              </svg>
+            </figure>
+            <div class="pockets">
+              <div class="pocket"><b>A · 10 devices</b><code>GX112334 · GX119679 · GX134187 · +7</code></div>
+              <div class="pocket"><b>B · 3 devices</b><code>GX103084 · GX77908 · GX82808</code></div>
+              <div class="pocket"><b>C · 3 devices</b><code>GX120615 · GX92847 · SY084420</code></div>
+            </div>
+            <p class="proposal-tag">Proposed: 3 local verdicts</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">The proposed flow</span>
+          <h2>Wide when proven. Local when it is not.</h2>
+          <p>The parent outage remains the source record. Sub-outages add the missing local layer.</p>
+        </div>
+        <div class="flow">
+          <article class="flow-card"><b>1 · Keep</b><h3>Parent outage</h3><p>Preserve the original outage ID, trigger time and member devices.</p></article>
+          <article class="flow-card"><b>2 · Check</b><h3>Is the CSP down widely?</h3><p>Use CSP health, peer signals and affected share.</p><span class="branch">Yes → keep the CSP-wide verdict</span></article>
+          <article class="flow-card"><b>3 · Cluster</b><h3>If no, find local pockets</h3><p>Group nearby failures using space, time and network context.</p></article>
+          <article class="flow-card"><b>4 · Send</b><h3>Attribute every device</h3><p>Give each pocket a cause, confidence and message for CSP and customer.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section delivery">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">Communication</span>
+          <h2>Send the local verdict to the people who need it.</h2>
+          <p>Each device inherits its sub-outage ID, verdict, confidence and next update.</p>
+        </div>
+        <div class="message-grid">
+          <article class="message">
+            <span class="message-label">For CSP operations</span>
+            <blockquote>“Outage 3000002606-A: 5 nearby devices form one local pocket. Parent outage retained. Local cause, evidence and confidence attached.”</blockquote>
+          </article>
+          <article class="message">
+            <span class="message-label">For affected customers</span>
+            <blockquote>“We see a local service issue near your device. We do not currently see a provider-wide outage. We will update you as this local issue changes.”</blockquote>
+          </article>
+        </div>
+        <div class="payload" aria-label="Required sub-outage fields">
+          <span>parent_outage_id</span><span>sub_outage_id</span><span>device_ids</span><span>local_geometry</span><span>cause</span><span>confidence</span><span>evidence</span><span>customer_message</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell">
+        <div class="pilot">
+          <div>
+            <span class="eyebrow">Low-risk next step</span>
+            <h2>Pilot the 47 cases first.</h2>
+            <p>Run sub-outage clustering beside the current output. Keep parent IDs unchanged. Promote local verdicts only when confidence is strong and the CSP-wide signal is absent.</p>
+          </div>
+          <div class="pilot-badge"><span><strong>47</strong>cases ready</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">Source: outage device and attribution snapshot, 15 Aug 2026. Audit groups connect device locations within 1 km to reveal candidate pockets; this is not the proposed production threshold. Customer names, addresses, mobile numbers and coordinates are omitted.</div>
+  </footer>
+</body>
+</html>

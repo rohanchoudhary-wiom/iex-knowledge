@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Power vs Fibre — Ping-based Attribution</title>
+  <style>
+    :root {
+      --ink:#142630;
+      --muted:#617078;
+      --paper:#f4f1e9;
+      --card:#fffdf8;
+      --navy:#102e3c;
+      --teal:#148477;
+      --teal-soft:#dff1ec;
+      --orange:#e8773d;
+      --orange-soft:#fbe6da;
+      --purple:#7654b4;
+      --purple-soft:#ece5f7;
+      --yellow:#f5c451;
+      --line:#d8d5cd;
+      --red:#c84d42;
+      --shadow:0 14px 38px rgba(16,46,60,.10);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--ink);background:var(--paper);font:16px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .shell{width:min(1160px,calc(100% - 40px));margin:auto}
+    .section{padding:74px 0}
+    .section+.section{border-top:1px solid var(--line)}
+    h1,h2,h3,p{margin-top:0}
+    h1{max-width:680px;margin-bottom:20px;font-size:clamp(48px,6.4vw,82px);line-height:.98;letter-spacing:-.055em}
+    h2{margin-bottom:12px;font-size:clamp(32px,4vw,48px);line-height:1.04;letter-spacing:-.04em}
+    h3{margin-bottom:8px;font-size:22px;line-height:1.2}
+    code{font:800 .88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;margin-bottom:18px;color:var(--teal);font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    .eyebrow:before{width:24px;height:3px;content:"";background:currentColor}
+    .section-head{max-width:790px;margin-bottom:34px}
+    .section-head p{margin:0;color:var(--muted);font-size:19px}
+
+    .hero{padding:34px 0 70px;color:#fff;background:radial-gradient(circle at 84% 15%,rgba(245,196,81,.18),transparent 28%),linear-gradient(135deg,#0d2633,#123b49)}
+    .topline{display:flex;justify-content:space-between;margin-bottom:64px;color:#d9e6e6;font-size:13px}
+    .brand{font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:60px;align-items:center}
+    .hero .eyebrow{color:var(--yellow)}
+    .hero-copy p{max-width:650px;margin:0;color:#dbe6e6;font-size:21px}
+    .hero-card{padding:30px;color:var(--ink);background:var(--card);border-radius:24px;box-shadow:0 30px 80px rgba(0,0,0,.28)}
+    .hero-card small{color:var(--muted);font-weight:850;text-transform:uppercase}
+    .hero-card strong{display:block;margin:8px 0 4px;color:var(--navy);font-size:68px;line-height:1;letter-spacing:-.06em}
+    .hero-card p{margin:0 0 20px;color:var(--muted)}
+    .hero-rule{padding:14px 16px;color:#0c5e55;background:var(--teal-soft);border-radius:12px;font-size:17px;font-weight:900}
+
+    .story-overview{padding:28px 0;background:#e8ece8;border-bottom:1px solid var(--line)}
+    .story-lead{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:16px}
+    .story-lead h2{margin:0;font-size:28px}.story-lead p{max-width:520px;margin:0;color:var(--muted)}
+    .story-rail{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+    .story-stop{padding:14px;background:var(--card);border:1px solid var(--line);border-radius:11px}
+    .story-stop b{display:grid;place-items:center;width:28px;height:28px;margin-bottom:10px;color:#fff;background:var(--teal);border-radius:50%;font-size:12px}
+    .story-stop strong{display:block;margin-bottom:3px}.story-stop span{color:var(--muted);font-size:12px}
+
+    .cluster-flow{display:grid;grid-template-columns:1fr 70px 1fr;gap:18px;align-items:center}
+    .cluster-panel{min-width:0;margin:0;padding:18px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+    .cluster-panel figcaption{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:12px;font-weight:900}
+    .cluster-panel figcaption span{color:var(--muted);font-size:12px}
+    .cluster-panel svg{display:block;width:100%;height:auto;background-color:#edf2ef;background-image:linear-gradient(rgba(16,46,60,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(16,46,60,.055) 1px,transparent 1px);background-size:24px 24px;border-radius:12px}
+    .cluster-arrow{display:grid;place-items:center;width:70px;height:70px;color:#fff;background:var(--navy);border-radius:50%;font-size:28px;font-weight:900}
+    .parent-shape{fill:rgba(232,119,61,.10);stroke:var(--orange);stroke-width:3;stroke-dasharray:8 6}
+    .search-area{fill:rgba(20,132,119,.08);stroke:var(--teal);stroke-width:3;stroke-dasharray:7 5}
+    .search-area.sparse{fill:rgba(118,84,180,.08);stroke:var(--purple)}
+    .cluster-label{font-size:12px;font-weight:900;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+    .cluster-label.a{fill:var(--teal)}.cluster-label.b{fill:var(--purple)}.cluster-label.noise{fill:var(--orange)}
+    .cluster-dot{fill:var(--navy);stroke:#fff;stroke-width:2}
+    .cluster-dot.a{fill:var(--teal)}.cluster-dot.b{fill:var(--purple)}.cluster-dot.noise{fill:var(--orange)}
+    .method-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+    .method-card{padding:15px 16px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+    .method-card b{display:block;margin-bottom:3px}.method-card span{color:var(--muted);font-size:13px}
+    .data-strip{display:grid;grid-template-columns:repeat(5,1fr);margin-top:26px;overflow:hidden;color:#fff;background:var(--navy);border-radius:16px}
+    .data-strip div{padding:20px;border-right:1px solid rgba(255,255,255,.15)}
+    .data-strip div:last-child{border:0}.data-strip strong{display:block;color:var(--yellow);font-size:32px;line-height:1}.data-strip span{display:block;margin-top:5px;color:#d6e2e2;font-size:13px}
+    .plain-rule{margin:16px 0 0;padding:14px 16px;color:#0c5e55;background:var(--teal-soft);border-radius:10px;font-weight:900;text-align:center}
+
+    .compare-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+    .case{padding:26px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+    .case.power{border-top:6px solid var(--yellow)}
+    .case.fibre{border-top:6px solid var(--teal)}
+    .case-top{display:flex;justify-content:space-between;gap:18px;align-items:start}
+    .same-count{padding:7px 10px;color:var(--navy);background:#edf1ef;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}
+    .case-top p{margin:0;color:var(--muted)}
+    .map-frame{position:relative;margin:22px 0 18px;overflow:hidden;background-color:#edf2ef;background-image:linear-gradient(rgba(16,46,60,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(16,46,60,.055) 1px,transparent 1px);background-size:24px 24px;border:1px solid #d7dfda;border-radius:16px}
+    .map-frame svg{display:block;width:100%;height:auto}
+    .map-title{position:absolute;top:12px;left:12px;z-index:2;padding:5px 8px;color:var(--navy);background:rgba(255,255,255,.9);border-radius:6px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .radius{fill:rgba(255,255,255,.48);stroke:#839298;stroke-width:2;stroke-dasharray:7 6}
+    .node{stroke-width:2.5;vector-effect:non-scaling-stroke}
+    .node.down{stroke:#fff}
+    .node.up{fill:#fff}
+    .csp-a.down{fill:var(--teal)}.csp-a.up{stroke:var(--teal)}
+    .csp-b.down{fill:var(--orange)}.csp-b.up{stroke:var(--orange)}
+    .csp-c.down{fill:var(--purple)}.csp-c.up{stroke:var(--purple)}
+    .radius-label{fill:var(--muted);font-size:11px;font-weight:900}
+    .legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:18px;color:var(--muted);font-size:12px;font-weight:800}
+    .legend span{display:inline-flex;align-items:center;gap:6px}
+    .key{display:inline-block;width:11px;height:11px;border-radius:50%}
+    .key.a{background:var(--teal)}.key.b{background:var(--orange)}.key.c{background:var(--purple)}
+    .key.down{background:var(--ink);border:2px solid var(--ink)}.key.up{background:#fff;border:2px solid var(--ink)}
+    .breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+    .breakdown span{padding:9px 10px;background:#f4f3ee;border-radius:8px;font-size:13px;font-weight:850;text-align:center}
+    .verdict{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px 16px;border-radius:12px}
+    .verdict b{font:900 16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .verdict small{font-weight:850}
+    .verdict.power{color:#6f4b00;background:#fff1c6}
+    .verdict.fibre{color:#0d5f56;background:var(--teal-soft)}
+    .map-note{margin:18px 0 0;color:var(--muted);font-size:13px;text-align:center}
+
+    .radius-layout{display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:stretch}
+    .radius-figure{position:relative;margin:0;overflow:hidden;background-color:#edf2ef;background-image:linear-gradient(rgba(16,46,60,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(16,46,60,.055) 1px,transparent 1px);background-size:24px 24px;border:1px solid #d7dfda;border-radius:18px}
+    .radius-figure svg{display:block;width:100%;height:auto}
+    .coverage{fill:none;stroke-width:3}
+    .coverage.r70{fill:rgba(20,132,119,.08);stroke:var(--teal)}
+    .coverage.r80{stroke:#2677b8;stroke-dasharray:7 5}
+    .coverage.r90{stroke:var(--purple);stroke-dasharray:3 5}
+    .coverage-dot{fill:var(--teal);stroke:#fff;stroke-width:2}
+    .tail-dot{fill:var(--orange);stroke:#fff;stroke-width:3}
+    .tail-link{fill:none;stroke:var(--orange);stroke-width:2;stroke-dasharray:7 6}
+    .ring-text{font-size:12px;font-weight:900;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+    .ring-text.r70{fill:var(--teal)}.ring-text.r80{fill:#2677b8}.ring-text.r90{fill:var(--purple)}.ring-text.r100{fill:#ae4825}
+    .radius-bins{display:grid;gap:9px}
+    .radius-bin{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center;padding:16px 18px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+    .radius-bin strong{font-size:28px;line-height:1}
+    .radius-bin b{display:block}.radius-bin small{display:block;margin-top:3px;color:var(--muted)}
+    .radius-bin.core strong{color:var(--teal)}.radius-bin.confirm strong{color:#2677b8}.radius-bin.boundary strong{color:var(--purple)}.radius-bin.tail strong{color:var(--orange)}
+    .radius-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+    .radius-action{padding:18px 20px;border-radius:14px}
+    .radius-action b{display:block;margin-bottom:4px;font-size:18px}.radius-action span{color:var(--muted)}
+    .radius-action.keep{background:var(--teal-soft)}.radius-action.tail{background:var(--orange-soft)}
+    .confidence-pair{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+    .confidence-pair span{padding:8px 10px;color:#fff;background:var(--navy);border-radius:8px;font-size:12px;font-weight:900}
+
+    .rule-banner{margin-bottom:24px;padding:18px 22px;color:#fff;background:var(--navy);border-radius:14px;font-size:22px;font-weight:900;text-align:center}
+    .rule-banner span{color:var(--yellow)}
+    .flow{display:grid;grid-template-columns:1fr 44px 1fr 44px 1.25fr;align-items:stretch}
+    .arrow{display:grid;place-items:center;color:var(--navy);font-size:28px;font-weight:900}
+    .step{padding:24px;background:var(--card);border:1px solid var(--line);border-radius:16px}
+    .step>small{display:block;margin-bottom:20px;color:var(--teal);font-weight:900;text-transform:uppercase}
+    .step p{margin:0;color:var(--muted)}
+    .branches{display:grid;gap:9px;margin-top:15px}
+    .branch{padding:11px 12px;border-radius:9px;font-size:13px;font-weight:850}
+    .branch.power{background:#fff1c6}.branch.fibre{background:var(--teal-soft)}.branch.unknown{background:#ececea}
+
+    .warning{display:grid;grid-template-columns:.75fr 1.25fr;gap:30px;align-items:center}
+    .warning-copy{padding:30px;color:#fff;background:var(--red);border-radius:18px}
+    .warning-copy strong{display:block;font-size:clamp(42px,5vw,64px);line-height:1;letter-spacing:-.06em}
+    .warning-copy h2{margin:8px 0 0}
+    .small-cases{display:grid;gap:10px}
+    .small-case{display:grid;grid-template-columns:90px 1fr;gap:18px;align-items:center;padding:17px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+    .mini-dots{display:flex;flex-wrap:wrap;gap:5px;width:74px}
+    .mini-dots i{width:13px;height:13px;background:var(--teal);border-radius:50%}
+    .mini-dots.mixed i:nth-child(3n){background:var(--orange)}
+    .mini-dots.scattered{gap:10px 18px}
+    .small-case p{margin:3px 0 0;color:var(--muted);font-size:14px}
+
+    .score-card{padding:26px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+    .score-card>small,.cause-formula>small{display:block;margin-bottom:8px;color:var(--teal);font-weight:900;text-transform:uppercase}
+    .term-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+    .term{padding:12px;background:#f1f1ec;border-radius:9px}
+    .term b{display:block;margin-bottom:4px}.term span{color:var(--muted);font-size:12px}
+    .cause-formulas{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+    .cause-formula{padding:24px;background:var(--card);border:1px solid var(--line);border-radius:16px}
+    .cause-formula.power{border-top:6px solid var(--yellow)}.cause-formula.fibre{border-top:6px solid var(--teal)}
+    .gate{margin:12px 0;padding:11px 13px;border-radius:9px;font-size:13px;font-weight:850}
+    .gate.power{background:#fff1c6}.gate.fibre{background:var(--teal-soft)}
+    .formula-note{margin:0;color:var(--muted);font-size:13px}
+    .final-confidence{display:grid;grid-template-columns:1.25fr .75fr;gap:18px;margin-top:18px;padding:24px;color:#fff;background:var(--navy);border-radius:16px}
+    .score-bands{display:grid;gap:7px}
+    .score-band{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;color:var(--navy);background:#fff;border:1px solid var(--line);border-radius:8px;font-weight:900}
+    .no-peer{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-top:14px;padding:18px 20px;color:#6f4b00;background:#fff1c6;border-radius:12px}
+    .no-peer strong{font-size:18px}.no-peer span{font-weight:850;text-align:right}
+
+    .dry-runs{background:#e9ede8}
+    .dry-run-list{display:grid;gap:18px}
+    .dry-run{overflow:hidden;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+    .dry-run.power{border-left:7px solid var(--yellow)}.dry-run.fibre{border-left:7px solid var(--teal)}.dry-run.unknown{border-left:7px solid #8b9498}
+    .run-head{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}
+    .run-head small{display:block;color:var(--muted);font-weight:900;text-transform:uppercase}.run-head h3{margin:2px 0 0}
+    .run-result{padding:9px 12px;border-radius:9px;font-size:13px;font-weight:900;text-align:right}
+    .run-result.power{color:#6f4b00;background:#fff1c6}.run-result.fibre{color:#0d5f56;background:var(--teal-soft)}.run-result.unknown{background:#ececea}
+    .run-steps{display:grid;grid-template-columns:repeat(5,1fr)}
+    .run-step{min-width:0;padding:18px;border-right:1px solid var(--line)}
+    .run-step:last-child{border:0}.run-step small{display:block;margin-bottom:8px;color:var(--teal);font-size:11px;font-weight:900;text-transform:uppercase}.run-step b{display:block;margin-bottom:5px}.run-step p{margin:0;color:var(--muted);font-size:13px}
+    .run-math{display:block;margin-top:8px;color:var(--navy);font:800 11px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:normal}
+
+    .confidence{color:#fff;background:var(--navy)}
+    .confidence .section-head p{color:#d6e2e2}
+    .cap{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px;padding:20px 24px;color:var(--navy);background:var(--yellow);border-radius:14px}
+    .cap strong{font-size:24px}.cap span{font-weight:850}
+    .confidence-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+    .evidence{padding:25px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:16px}
+    .evidence h3{color:var(--yellow)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+    .chips span{padding:8px 10px;color:var(--navy);background:#fff;border-radius:8px;font-size:12px;font-weight:850}
+    footer{padding:28px 0 38px;color:var(--muted);font-size:12px}
+
+    @media(max-width:900px){.hero-grid,.warning,.radius-layout,.final-confidence{grid-template-columns:1fr}.compare-grid,.confidence-grid,.radius-actions,.data-strip,.cause-formulas{grid-template-columns:1fr 1fr}.story-rail,.term-grid{grid-template-columns:repeat(3,1fr)}.run-steps{grid-template-columns:1fr 1fr}.run-step:nth-child(even){border-right:0}.cluster-flow{grid-template-columns:1fr}.cluster-arrow{margin:auto;transform:rotate(90deg)}.flow{grid-template-columns:1fr}.arrow{height:40px;transform:rotate(90deg)}}
+    @media(max-width:620px){.shell{width:min(calc(100% - 24px),1160px)}.section{padding:54px 0}.hero{padding-bottom:54px}.topline{margin-bottom:44px}.topline span:last-child{display:none}.hero-copy p,.section-head p{font-size:17px}.hero-card strong{font-size:56px}.case{padding:19px}.story-lead,.case-top,.verdict,.cap,.no-peer,.run-head{align-items:flex-start;flex-direction:column}.no-peer span,.run-result{text-align:left}.story-rail,.breakdown,.method-row,.data-strip,.cause-formulas,.term-grid,.run-steps{grid-template-columns:1fr}.run-step,.run-step:nth-child(even){border-right:0;border-bottom:1px solid var(--line)}.data-strip div{border-right:0;border-bottom:1px solid rgba(255,255,255,.15)}.small-case{grid-template-columns:72px 1fr}.warning-copy strong{font-size:46px}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <div class="topline"><span class="brand">IEX outage attribution</span><span>Proposed adaptive clustering method</span></div>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">The proposed method</span>
+          <h1>Find the real sub-outage. Then decide power or fibre.</h1>
+          <p>A parent polygon can contain separate device groups. Split it with variable-density clustering, inspect the R70–R100 radius profile, then compare provider behaviour inside each group.</p>
+        </div>
+        <aside class="hero-card">
+          <small>Observed in the portal snapshot</small>
+          <strong>779</strong>
+          <p>UNKNOWN outages had no peer-provider comparison</p>
+          <div class="hero-rule">Their median R90 is 557 m; 76.3% are within 1 km. This supports testing sub-outages, not guessing a cause.</div>
+        </aside>
+      </div>
+    </div>
+  </header>
+
+  <section class="story-overview" aria-labelledby="story-title">
+    <div class="shell">
+      <div class="story-lead">
+        <h2 id="story-title">Follow one outage from polygon to verdict.</h2>
+        <p>Each stage answers one question. A later stage cannot repair weak evidence from an earlier one.</p>
+      </div>
+      <div class="story-rail" aria-label="Six-stage outage attribution story">
+        <div class="story-stop"><b>1</b><strong>Split</strong><span>Which failed devices belong together?</span></div>
+        <div class="story-stop"><b>2</b><strong>Compare</strong><span>Which providers failed inside the group?</span></div>
+        <div class="story-stop"><b>3</b><strong>Check</strong><span>What do R70 through R100 say about the core and tail?</span></div>
+        <div class="story-stop"><b>4</b><strong>Classify</strong><span>Does the pattern support power or fibre?</span></div>
+        <div class="story-stop"><b>5</b><strong>Grade</strong><span>What can the current data honestly support?</span></div>
+        <div class="story-stop"><b>6</b><strong>Confirm</strong><span>What independent evidence proves the cause?</span></div>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="section" id="vdbscan">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">Step 1 · Split the parent outage</span>
+          <h2>One long polygon may contain several real outages.</h2>
+          <p>VDBSCAN changes its search distance with local device density. It uses a short reach in dense streets and a longer reach where devices are naturally farther apart.</p>
+        </div>
+
+        <div class="cluster-flow">
+          <figure class="cluster-panel">
+            <figcaption>Before <span>one stretched parent polygon</span></figcaption>
+            <svg viewBox="0 0 480 280" role="img" aria-label="A parent outage polygon stretching across two separate groups and two distant devices">
+              <path class="parent-shape" d="M35 224 C63 85 115 58 201 95 C268 123 294 51 384 65 C447 75 458 156 421 216 C370 261 296 229 236 215 C166 197 103 268 35 224Z"/>
+              <g aria-hidden="true">
+                <circle class="cluster-dot" cx="105" cy="132" r="7"/><circle class="cluster-dot" cx="127" cy="116" r="7"/><circle class="cluster-dot" cx="148" cy="136" r="7"/><circle class="cluster-dot" cx="119" cy="154" r="7"/><circle class="cluster-dot" cx="156" cy="163" r="7"/><circle class="cluster-dot" cx="91" cy="159" r="7"/><circle class="cluster-dot" cx="138" cy="181" r="7"/><circle class="cluster-dot" cx="174" cy="142" r="7"/><circle class="cluster-dot" cx="103" cy="190" r="7"/>
+                <circle class="cluster-dot" cx="317" cy="116" r="7"/><circle class="cluster-dot" cx="363" cy="103" r="7"/><circle class="cluster-dot" cx="391" cy="137" r="7"/><circle class="cluster-dot" cx="332" cy="153" r="7"/><circle class="cluster-dot" cx="373" cy="176" r="7"/><circle class="cluster-dot" cx="300" cy="190" r="7"/><circle class="cluster-dot" cx="411" cy="190" r="7"/>
+                <circle class="cluster-dot noise" cx="239" cy="63" r="8"/><circle class="cluster-dot noise" cx="240" cy="244" r="8"/>
+              </g>
+              <text class="cluster-label noise" x="240" y="263" text-anchor="middle">everything is forced into one shape</text>
+            </svg>
+          </figure>
+
+          <div class="cluster-arrow" aria-hidden="true">→</div>
+
+          <figure class="cluster-panel">
+            <figcaption>After VDBSCAN <span>two sub-outages + noise</span></figcaption>
+            <svg viewBox="0 0 480 280" role="img" aria-label="Variable-density clustering separates a dense group, a sparse group and two noise devices">
+              <circle class="search-area" cx="132" cy="153" r="67"/><circle class="search-area sparse" cx="357" cy="151" r="96"/>
+              <g aria-hidden="true">
+                <circle class="cluster-dot a" cx="105" cy="132" r="7"/><circle class="cluster-dot a" cx="127" cy="116" r="7"/><circle class="cluster-dot a" cx="148" cy="136" r="7"/><circle class="cluster-dot a" cx="119" cy="154" r="7"/><circle class="cluster-dot a" cx="156" cy="163" r="7"/><circle class="cluster-dot a" cx="91" cy="159" r="7"/><circle class="cluster-dot a" cx="138" cy="181" r="7"/><circle class="cluster-dot a" cx="174" cy="142" r="7"/><circle class="cluster-dot a" cx="103" cy="190" r="7"/>
+                <circle class="cluster-dot b" cx="317" cy="116" r="7"/><circle class="cluster-dot b" cx="363" cy="103" r="7"/><circle class="cluster-dot b" cx="391" cy="137" r="7"/><circle class="cluster-dot b" cx="332" cy="153" r="7"/><circle class="cluster-dot b" cx="373" cy="176" r="7"/><circle class="cluster-dot b" cx="300" cy="190" r="7"/><circle class="cluster-dot b" cx="411" cy="190" r="7"/>
+                <circle class="cluster-dot noise" cx="239" cy="63" r="8"/><circle class="cluster-dot noise" cx="240" cy="244" r="8"/>
+              </g>
+              <text class="cluster-label a" x="132" y="76" text-anchor="middle">dense area · short reach</text>
+              <text class="cluster-label b" x="357" y="43" text-anchor="middle">sparse area · longer reach</text>
+              <text class="cluster-label noise" x="239" y="88" text-anchor="middle">noise</text>
+              <text class="cluster-label noise" x="240" y="269" text-anchor="middle">noise</text>
+            </svg>
+          </figure>
+        </div>
+
+        <div class="method-row">
+          <div class="method-card"><b>Same time</b><span>Start with failures inside the same 30-minute window.</span></div>
+          <div class="method-card"><b>Learn local spacing</b><span>Use neighbour distance instead of one fixed radius.</span></div>
+          <div class="method-card"><b>Form sub-outages</b><span>Keep connected device groups as separate events.</span></div>
+          <div class="method-card"><b>Leave noise outside</b><span>Do not stretch a cluster to include every device.</span></div>
+        </div>
+
+        <div class="data-strip" aria-label="Observed median radius results for no-peer unknown outages">
+          <div><strong>779</strong><span>strict no-peer UNKNOWN cases</span></div>
+          <div><strong>300 m</strong><span>median R70</span></div>
+          <div><strong>386 m</strong><span>median R80</span></div>
+          <div><strong>557 m</strong><span>median R90</span></div>
+          <div><strong>809 m</strong><span>median R100</span></div>
+        </div>
+        <p class="map-note">14,455 of 14,465 affected device records have coordinates. A typical case has 13 devices; 625 cases have at least 10 located devices.</p>
+        <p class="map-note">76.3% have R90 within 1 km. Only 9.8% fit inside 200 m. In 11.6%, R90 jumps more than 500 m beyond R80; in 10.5%, R100 jumps more than 1 km beyond R90.</p>
+        <p class="plain-rule">VDBSCAN decides which devices belong together. Provider evidence decides the likely cause.</p>
+      </div>
+    </section>
+
+    <section class="section" id="comparison">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">Step 2 · Compare providers inside the sub-outage</span>
+          <h2>The same 35 failures can still mean two different things.</h2>
+          <p>Now work inside one VDBSCAN group. Solid dots stopped answering. Rings are still working. Each colour is a different provider.</p>
+        </div>
+        <div class="legend"><span><i class="key a"></i>Provider A</span><span><i class="key b"></i>Provider B</span><span><i class="key c"></i>Provider C</span><span><i class="key down"></i>Not answering</span><span><i class="key up"></i>Working</span></div>
+
+        <div class="compare-grid">
+          <article class="case power">
+            <div class="case-top"><div><small>Case A</small><h3>A local power cut is more likely</h3><p>The failed devices belong to Providers A, B and C. Different networks failed together.</p></div><span class="same-count">35 / 50 stopped</span></div>
+            <figure class="map-frame">
+              <figcaption class="map-title">One VDBSCAN sub-outage</figcaption>
+              <svg viewBox="0 0 420 300" role="img" aria-label="Thirty-five unavailable devices distributed across three providers">
+                <circle class="radius" cx="210" cy="150" r="118"/>
+                <circle class="node csp-a down" cx="237.2" cy="150.0" r="6"/><circle class="node csp-a down" cx="185.0" cy="172.9" r="6"/><circle class="node csp-a down" cx="213.4" cy="111.6" r="6"/><circle class="node csp-a down" cx="235.8" cy="183.6" r="6"/><circle class="node csp-a down" cx="165.1" cy="142.1" r="6"/>
+                <circle class="node csp-a down" cx="250.9" cy="124.0" r="6"/><circle class="node csp-a down" cx="196.7" cy="199.4" r="6"/><circle class="node csp-a down" cx="185.3" cy="102.4" r="6"/><circle class="node csp-a down" cx="262.5" cy="169.2" r="6"/><circle class="node csp-a down" cx="156.3" cy="172.2" r="6"/>
+                <circle class="node csp-a down" cx="235.5" cy="95.5" r="6"/><circle class="node csp-a down" cx="228.6" cy="209.3" r="6"/><circle class="node csp-a down" cx="154.6" cy="117.9" r="6"/><circle class="node csp-a down" cx="274.3" cy="135.9" r="6"/><circle class="node csp-a down" cx="171.2" cy="205.3" r="6"/>
+                <circle class="node csp-a down" cx="201.1" cy="81.4" r="6"/><circle class="node csp-a down" cx="264.2" cy="195.7" r="6"/><circle class="node csp-a down" cx="137.6" cy="153.0" r="6"/><circle class="node csp-a down" cx="262.4" cy="97.8" r="6"/><circle class="node csp-a down" cx="206.5" cy="225.4" r="6"/>
+                <circle class="node csp-a down" cx="160.7" cy="91.0" r="6"/><circle class="node csp-a down" cx="287.6" cy="160.4" r="6"/><circle class="node csp-a down" cx="144.6" cy="195.5" r="6"/><circle class="node csp-a down" cx="227.8" cy="70.9" r="6"/><circle class="node csp-a down" cx="251.0" cy="221.5" r="6"/>
+                <circle class="node csp-a up" cx="130.3" cy="124.6" r="6"/><circle class="node csp-a up" cx="287.1" cy="114.4" r="6"/><circle class="node csp-a up" cx="176.7" cy="229.5" r="6"/><circle class="node csp-a up" cx="180.4" cy="67.7" r="6"/><circle class="node csp-a up" cx="288.5" cy="191.3" r="6"/>
+                <circle class="node csp-a up" cx="123.1" cy="172.9" r="6"/><circle class="node csp-a up" cx="259.2" cy="73.4" r="6"/><circle class="node csp-a up" cx="225.6" cy="240.8" r="6"/><circle class="node csp-a up" cx="136.2" cy="92.9" r="6"/><circle class="node csp-a up" cx="304.1" cy="142.2" r="6"/>
+                <circle class="node csp-b down" cx="145.1" cy="220.1" r="6"/><circle class="node csp-b down" cx="210.5" cy="53.4" r="6"/><circle class="node csp-b down" cx="275.6" cy="222.3" r="6"/><circle class="node csp-b down" cx="111.7" cy="140.9" r="6"/><circle class="node csp-b down" cx="289.5" cy="89.7" r="6"/><circle class="node csp-b down" cx="192.0" cy="249.2" r="6"/><circle class="node csp-b down" cx="155.8" cy="63.8" r="6"/>
+                <circle class="node csp-b up" cx="309.2" cy="177.2" r="6"/><circle class="node csp-b up" cx="117.6" cy="197.4" r="6"/><circle class="node csp-b up" cx="246.4" cy="51.7" r="6"/>
+                <circle class="node csp-c down" cx="249.9" cy="248.0" r="6"/><circle class="node csp-c down" cx="113.6" cy="104.3" r="6"/><circle class="node csp-c down" cx="312.9" cy="118.3" r="6"/><circle class="node csp-c up" cx="155.1" cy="243.7" r="6"/><circle class="node csp-c up" cx="187.0" cy="42.9" r="6"/>
+                <text class="radius-label" x="210" y="286" text-anchor="middle">same area · same time</text>
+              </svg>
+            </figure>
+            <div class="breakdown"><span>Provider A · 25/35 down</span><span>Provider B · 7/10 down</span><span>Provider C · 3/5 down</span></div>
+            <div class="verdict power"><b>LIKELY LOCAL POWER PATTERN</b><small>Proposed verdict · not confirmed</small></div>
+          </article>
+
+          <article class="case fibre">
+            <div class="case-top"><div><small>Case B</small><h3>A fibre/network fault at Provider A is more likely</h3><p>All failed devices belong to Provider A. Providers B and C are still working.</p></div><span class="same-count">35 / 50 stopped</span></div>
+            <figure class="map-frame">
+              <figcaption class="map-title">One VDBSCAN sub-outage</figcaption>
+              <svg viewBox="0 0 420 300" role="img" aria-label="Thirty-five unavailable devices all belonging to one provider while nearby providers remain working">
+                <circle class="radius" cx="210" cy="150" r="118"/>
+                <circle class="node csp-a down" cx="237.2" cy="150.0" r="6"/><circle class="node csp-a down" cx="185.0" cy="172.9" r="6"/><circle class="node csp-a down" cx="213.4" cy="111.6" r="6"/><circle class="node csp-a down" cx="235.8" cy="183.6" r="6"/><circle class="node csp-a down" cx="165.1" cy="142.1" r="6"/>
+                <circle class="node csp-a down" cx="250.9" cy="124.0" r="6"/><circle class="node csp-a down" cx="196.7" cy="199.4" r="6"/><circle class="node csp-a down" cx="185.3" cy="102.4" r="6"/><circle class="node csp-a down" cx="262.5" cy="169.2" r="6"/><circle class="node csp-a down" cx="156.3" cy="172.2" r="6"/>
+                <circle class="node csp-a down" cx="235.5" cy="95.5" r="6"/><circle class="node csp-a down" cx="228.6" cy="209.3" r="6"/><circle class="node csp-a down" cx="154.6" cy="117.9" r="6"/><circle class="node csp-a down" cx="274.3" cy="135.9" r="6"/><circle class="node csp-a down" cx="171.2" cy="205.3" r="6"/>
+                <circle class="node csp-a down" cx="201.1" cy="81.4" r="6"/><circle class="node csp-a down" cx="264.2" cy="195.7" r="6"/><circle class="node csp-a down" cx="137.6" cy="153.0" r="6"/><circle class="node csp-a down" cx="262.4" cy="97.8" r="6"/><circle class="node csp-a down" cx="206.5" cy="225.4" r="6"/>
+                <circle class="node csp-a down" cx="160.7" cy="91.0" r="6"/><circle class="node csp-a down" cx="287.6" cy="160.4" r="6"/><circle class="node csp-a down" cx="144.6" cy="195.5" r="6"/><circle class="node csp-a down" cx="227.8" cy="70.9" r="6"/><circle class="node csp-a down" cx="251.0" cy="221.5" r="6"/>
+                <circle class="node csp-a down" cx="130.3" cy="124.6" r="6"/><circle class="node csp-a down" cx="287.1" cy="114.4" r="6"/><circle class="node csp-a down" cx="176.7" cy="229.5" r="6"/><circle class="node csp-a down" cx="180.4" cy="67.7" r="6"/><circle class="node csp-a down" cx="288.5" cy="191.3" r="6"/>
+                <circle class="node csp-a down" cx="123.1" cy="172.9" r="6"/><circle class="node csp-a down" cx="259.2" cy="73.4" r="6"/><circle class="node csp-a down" cx="225.6" cy="240.8" r="6"/><circle class="node csp-a down" cx="136.2" cy="92.9" r="6"/><circle class="node csp-a down" cx="304.1" cy="142.2" r="6"/>
+                <circle class="node csp-b up" cx="145.1" cy="220.1" r="6"/><circle class="node csp-b up" cx="210.5" cy="53.4" r="6"/><circle class="node csp-b up" cx="275.6" cy="222.3" r="6"/><circle class="node csp-b up" cx="111.7" cy="140.9" r="6"/><circle class="node csp-b up" cx="289.5" cy="89.7" r="6"/><circle class="node csp-b up" cx="192.0" cy="249.2" r="6"/><circle class="node csp-b up" cx="155.8" cy="63.8" r="6"/><circle class="node csp-b up" cx="309.2" cy="177.2" r="6"/><circle class="node csp-b up" cx="117.6" cy="197.4" r="6"/><circle class="node csp-b up" cx="246.4" cy="51.7" r="6"/>
+                <circle class="node csp-c up" cx="249.9" cy="248.0" r="6"/><circle class="node csp-c up" cx="113.6" cy="104.3" r="6"/><circle class="node csp-c up" cx="312.9" cy="118.3" r="6"/><circle class="node csp-c up" cx="155.1" cy="243.7" r="6"/><circle class="node csp-c up" cx="187.0" cy="42.9" r="6"/>
+                <text class="radius-label" x="210" y="286" text-anchor="middle">same area · same time</text>
+              </svg>
+            </figure>
+            <div class="breakdown"><span>Provider A · 35/35 down</span><span>Provider B · 0/10 down</span><span>Provider C · 0/5 down</span></div>
+            <div class="verdict fibre"><b>LIKELY FIBRE / NETWORK PATTERN</b><small>Proposed verdict · not confirmed</small></div>
+          </article>
+        </div>
+        <p class="map-note">Do this check separately inside each local sub-outage. Do not mix distant device groups from the parent outage.</p>
+      </div>
+    </section>
+
+    <section class="section" id="radius-profile">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">Step 3 · Check the cluster quality</span>
+          <h2>R70, R80, R90 and R100 show the core and the tail.</h2>
+          <p>Measure from the robust centre of each sub-outage. Use R90 for the operating boundary. R100 is only a tail check.</p>
+        </div>
+        <div class="radius-layout">
+          <figure class="radius-figure">
+            <figcaption class="map-title">Real portal radius profile · simplified layout</figcaption>
+            <svg viewBox="0 0 650 360" role="img" aria-label="Seventy, eighty and ninety percent of failed devices are close together while the final ten percent are far away">
+              <circle class="coverage r90" cx="220" cy="185" r="112"/>
+              <circle class="coverage r80" cx="220" cy="185" r="82"/>
+              <circle class="coverage r70" cx="220" cy="185" r="55"/>
+              <g aria-hidden="true">
+                <circle class="coverage-dot" cx="205" cy="177" r="6"/><circle class="coverage-dot" cx="238" cy="172" r="6"/><circle class="coverage-dot" cx="219" cy="205" r="6"/><circle class="coverage-dot" cx="187" cy="198" r="6"/><circle class="coverage-dot" cx="249" cy="209" r="6"/>
+                <circle class="coverage-dot" cx="207" cy="147" r="6"/><circle class="coverage-dot" cx="176" cy="169" r="6"/><circle class="coverage-dot" cx="255" cy="151" r="6"/><circle class="coverage-dot" cx="232" cy="228" r="6"/><circle class="coverage-dot" cx="183" cy="224" r="6"/>
+                <circle class="coverage-dot" cx="277" cy="192" r="6"/><circle class="coverage-dot" cx="160" cy="189" r="6"/><circle class="coverage-dot" cx="218" cy="123" r="6"/><circle class="coverage-dot" cx="271" cy="233" r="6"/><circle class="coverage-dot" cx="163" cy="141" r="6"/>
+                <circle class="coverage-dot" cx="294" cy="147" r="6"/><circle class="coverage-dot" cx="142" cy="227" r="6"/><circle class="coverage-dot" cx="244" cy="94" r="6"/><circle class="coverage-dot" cx="310" cy="211" r="6"/><circle class="coverage-dot" cx="138" cy="112" r="6"/>
+              </g>
+              <path class="tail-link" d="M332 185 C400 185 430 118 510 102 M532 100 L555 225"/>
+              <path class="tail-link" d="M407 160 l10 14 m0-22 l10 14"/>
+              <circle class="tail-dot" cx="520" cy="98" r="9"/><circle class="tail-dot" cx="563" cy="231" r="9"/>
+              <text class="ring-text r70" x="252" y="158">R70 · 99 m</text>
+              <text class="ring-text r80" x="274" y="127">R80 · 108 m</text>
+              <text class="ring-text r90" x="295" y="92">R90 · 118 m</text>
+              <text class="ring-text r100" x="468" y="72">R100 · 9.3 km</text>
+              <text class="ring-text r100" x="470" y="276">last 10% · check again</text>
+            </svg>
+          </figure>
+
+          <div class="radius-bins">
+            <div class="radius-bin core"><strong>70%</strong><div><b>Inside 99 m</b><small>Reliable core</small></div></div>
+            <div class="radius-bin confirm"><strong>80%</strong><div><b>Inside 108 m</b><small>Core stays compact</small></div></div>
+            <div class="radius-bin boundary"><strong>90%</strong><div><b>Inside 118 m</b><small>Use this boundary</small></div></div>
+            <div class="radius-bin tail"><strong>100%</strong><div><b>Inside 9.3 km</b><small>Distant device; do not widen the verdict</small></div></div>
+          </div>
+        </div>
+
+        <div class="radius-actions">
+          <div class="radius-action keep"><b>Use R90 for the sub-outage</b><span>Proposed review gate: at least 10 located devices, R90 within 1 km, and no large R80-to-R90 jump. These cutoffs are not learned.</span><div class="confidence-pair"><span>Spatial evidence: SUPPORTED</span><span>No numeric probability</span></div></div>
+          <div class="radius-action tail"><b>Re-cluster when the radius jumps</b><span>Proposed trigger: if R90 is more than 500 m beyond R80, run VDBSCAN again. Keep R100 outside the customer boundary.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell">
+        <div class="section-head"><span class="eyebrow">Step 4 · Classify the likely cause</span><h2>Cluster first. Cause second.</h2><p>Inside R90, count every eligible device: the ones that failed and the ones still working. Then calculate a failure share for each provider.</p></div>
+        <div class="rule-banner">Inside the same R90 boundary, did <span>several providers</span> fail together?</div>
+        <div class="flow">
+          <article class="step"><small>1 · Population</small><h3>Use one sub-outage</h3><p>Take the VDBSCAN group and all eligible working devices inside its R90 boundary.</p></article>
+          <div class="arrow">→</div>
+          <article class="step"><small>2 · Shares</small><h3>Compare provider failure rates</h3><p>Calculate failed ÷ eligible for the affected provider and every peer provider.</p></article>
+          <div class="arrow">→</div>
+          <article class="step"><small>3 · Verdict</small><h3>Say what the evidence supports</h3><div class="branches"><div class="branch power">2+ providers each ≥70% down → likely premise power</div><div class="branch fibre">Affected provider ≥70% down; every peer &lt;20% down → likely fibre/network</div><div class="branch unknown">No peer or mixed pattern → cause UNKNOWN; still report the sub-outage</div></div></article>
+        </div>
+        <p class="plain-rule">The 70% and 20% values are proposed operating gates, not calibrated cutoffs. The provider-location state needed for this comparison is available for only 3,021 of 6,152 portal outages.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell warning">
+        <div class="warning-copy"><strong>7 devices</strong><h2>does not automatically mean fibre.</h2></div>
+        <div class="small-cases">
+          <article class="small-case"><div class="mini-dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><b>A fibre cut can affect seven devices—or thousands.</b><p>The count tells us the size, not the cause.</p></div></article>
+          <article class="small-case"><div class="mini-dots scattered"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><b>Seven scattered failures may be unrelated.</b><p>If there is no clear provider pattern, say “we cannot tell.”</p></div></article>
+          <article class="small-case"><div class="mini-dots mixed"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><b>Seven failures across providers may still be power.</b><p>Always look at who failed and when.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="confidence-method">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">Step 5 · Grade the evidence</span>
+          <h2>Do not publish a numeric confidence yet.</h2>
+          <p>The portal can show whether a local sub-outage is plausible and whether the provider pattern looks like power or fibre. It cannot yet estimate the probability that either cause is correct.</p>
+        </div>
+
+        <div class="rule-banner"><span>0 confirmed power cases + 0 confirmed fibre cases</span> = no learnable coefficients.</div>
+
+        <div class="data-strip" aria-label="Current portal and physical cause label coverage">
+          <div><strong>6,152</strong><span>outages visible in portal</span></div>
+          <div><strong>2,465</strong><span>portal cases marked UNKNOWN</span></div>
+          <div><strong>3,687</strong><span>cases marked CSP_SIDE by rules</span></div>
+          <div><strong>0</strong><span>confirmed PREMISE_POWER</span></div>
+          <div><strong>0</strong><span>confirmed ACCESS_FIBRE</span></div>
+        </div>
+
+        <article class="score-card">
+          <small>Audit of the previous weighted formula</small>
+          <h3>Its inputs do not support a score.</h3>
+          <div class="term-grid">
+            <div class="term"><b>N · Saturated</b><span>81.3% of outages already hit the maximum value.</span></div>
+            <div class="term"><b>R · Invented cutoff</b><span>The 1.5 km transform is not learned; 58.6% get the maximum.</span></div>
+            <div class="term"><b>J · Double counts shape</b><span>Radius jump and compactness overlap; correlation is 0.645.</span></div>
+            <div class="term"><b>T · No separation</b><span>The strongest 10-minute share equals 1 in 96.3% of outages.</span></div>
+            <div class="term"><b>V · Missing</b><span>No VDBSCAN stability value exists for any portal outage.</span></div>
+          </div>
+          <p class="plain-rule">For the 779 strict no-peer cases, simply guessing V as 0, 0.5 or 1 moves the old median score from 69.3 to 78.9 to 88.5.</p>
+          <div class="score-bands" aria-label="Sensitivity of the old score to the missing VDBSCAN value">
+            <div class="score-band"><span>Guess V = 0</span><span>median 69.3 · 0% HIGH</span></div>
+            <div class="score-band"><span>Guess V = 0.5</span><span>median 78.9 · 47.2% HIGH</span></div>
+            <div class="score-band"><span>Guess V = 1</span><span>median 88.5 · 63.5% HIGH</span></div>
+          </div>
+        </article>
+
+        <div class="cause-formulas">
+          <article class="cause-formula power">
+            <small>Cutoff sensitivity</small>
+            <h3>The device minimum changes the answer.</h3>
+            <div class="gate power">Same outages. Only the minimum eligible devices per provider changes.</div>
+            <div class="score-bands" aria-label="Provider pattern counts at three minimum device cutoffs">
+              <div class="score-band"><span>Minimum 1</span><span>338 power · 372 fibre</span></div>
+              <div class="score-band"><span>Minimum 5</span><span>145 power · 21 fibre</span></div>
+              <div class="score-band"><span>Minimum 10</span><span>40 power · 9 fibre</span></div>
+            </div>
+            <p class="formula-note" style="margin-top:12px">The target provider falls below a five-device minimum in 4,707 outages. This cutoff must be validated, not hidden inside a formula.</p>
+          </article>
+
+          <article class="cause-formula fibre">
+            <small>Ground-truth audit</small>
+            <h3>Nothing in the current files confirms the cause.</h3>
+            <div class="gate fibre">CSP_SIDE and UNKNOWN are outputs from existing rules. Training on them would only copy those rules.</div>
+            <div class="score-bands" aria-label="Available physical cause evidence">
+              <div class="score-band"><span>PREMISE_POWER labels</span><span>0</span></div>
+              <div class="score-band"><span>ACCESS_FIBRE labels</span><span>0</span></div>
+              <div class="score-band"><span>Ticket sample</span><span>25 · no usable outage/cause link</span></div>
+              <div class="score-band"><span>Optical sample</span><span>40 · no usable outage/cause link</span></div>
+            </div>
+            <p class="formula-note" style="margin-top:12px">There is no honest statistical fit to run until independently confirmed incidents are linked to outage IDs.</p>
+          </article>
+        </div>
+
+        <div class="final-confidence">
+          <div>
+            <small>What to publish now</small>
+            <h3>Send the evidence, not a made-up probability.</h3>
+            <p style="color:#d6e2e2">For every sub-outage, report the raw facts that let IEX, the CSP and the customer understand the verdict.</p>
+            <div class="chips">
+              <span>located failures / total</span><span>R70 · R80 · R90 · R100</span><span>VDBSCAN cluster + noise</span><span>stability when implemented</span><span>failed / eligible by CSP</span><span>peer availability</span><span>failure + recovery timing</span><span>confirmation source</span>
+            </div>
+          </div>
+          <div class="score-bands" aria-label="Evidence states to report instead of a numeric confidence">
+            <div class="score-band"><span>Sub-outage</span><span>SUPPORTED / REVIEW</span></div>
+            <div class="score-band"><span>Cause pattern</span><span>LIKELY / UNKNOWN</span></div>
+            <div class="score-band"><span>Independent proof</span><span>CONFIRMED / MISSING</span></div>
+            <div class="score-band"><span>Numeric probability</span><span>NOT AVAILABLE</span></div>
+          </div>
+        </div>
+
+        <div class="no-peer">
+          <strong>No peer provider?</strong>
+          <span>Report the sub-outage evidence. Keep the cause as UNKNOWN.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dry-runs" id="dry-runs">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">Dry runs · Put the whole method together</span>
+          <h2>Same journey. Three different answers.</h2>
+          <p>These examples are illustrative. They show the proposed operating gates, the raw evidence to send, and what is still missing. They do not pretend to be calibrated probabilities.</p>
+        </div>
+
+        <div class="dry-run-list">
+          <article class="dry-run power">
+            <div class="run-head">
+              <div><small>Dry run A</small><h3>Several providers fail together</h3></div>
+              <div class="run-result power">LIKELY PREMISE POWER · NOT CONFIRMED</div>
+            </div>
+            <div class="run-steps">
+              <div class="run-step"><small>1 · Observe</small><b>35 of 50 fail</b><p>All fail within 30 minutes; 32 fail in the strongest 10-minute window.</p></div>
+              <div class="run-step"><small>2 · Split</small><b>One sub-outage</b><p>VDBSCAN keeps the local group together and leaves distant noise outside.</p><code class="run-math">stability: measure after implementation</code></div>
+              <div class="run-step"><small>3 · Check</small><b>R80 180 m · R90 260 m</b><p>The radius grows smoothly.</p><code class="run-math">R90 − R80 = 80 m</code></div>
+              <div class="run-step"><small>4 · Compare</small><b>Two providers cross 70%</b><p>A: 25/30 = 83% · B: 8/10 = 80% · C: 2/10 = 20%</p></div>
+              <div class="run-step"><small>5 · Report</small><b>Likely power pattern</b><p>Send the device list and provider counts. A power alert or shared recovery is still needed.</p><code class="run-math">cause proof: missing</code></div>
+            </div>
+          </article>
+
+          <article class="dry-run fibre">
+            <div class="run-head">
+              <div><small>Dry run B</small><h3>One provider fails while peers stay up</h3></div>
+              <div class="run-result fibre">LIKELY FIBRE / NETWORK · NOT CONFIRMED</div>
+            </div>
+            <div class="run-steps">
+              <div class="run-step"><small>1 · Observe</small><b>35 of 50 fail</b><p>The failures happen inside the same 30-minute window.</p></div>
+              <div class="run-step"><small>2 · Split</small><b>One sub-outage</b><p>VDBSCAN finds one local device group.</p><code class="run-math">stability: measure after implementation</code></div>
+              <div class="run-step"><small>3 · Check</small><b>R80 180 m · R90 260 m</b><p>The group passes the proposed review gate.</p><code class="run-math">R90 − R80 = 80 m</code></div>
+              <div class="run-step"><small>4 · Compare</small><b>Only Provider A fails</b><p>A: 35/35 = 100% · qualified peers: 0/15 = 0%</p></div>
+              <div class="run-step"><small>5 · Report</small><b>Likely fibre/network pattern</b><p>Send the device list and healthy-peer counts. Fibre telemetry or field proof is still needed.</p><code class="run-math">cause proof: missing</code></div>
+            </div>
+          </article>
+
+          <article class="dry-run unknown">
+            <div class="run-head">
+              <div><small>Dry run C</small><h3>A real sub-outage with no peer provider</h3></div>
+              <div class="run-result unknown">SUB-OUTAGE SUPPORTED · CAUSE UNKNOWN</div>
+            </div>
+            <div class="run-steps">
+              <div class="run-step"><small>1 · Observe</small><b>18 devices fail</b><p>Sixteen fail in the strongest 10-minute window.</p></div>
+              <div class="run-step"><small>2 · Split</small><b>One sub-outage</b><p>VDBSCAN separates it from distant noise.</p><code class="run-math">stability: measure after implementation</code></div>
+              <div class="run-step"><small>3 · Check</small><b>R80 420 m · R90 620 m</b><p>The group passes the proposed review gate.</p><code class="run-math">R90 − R80 = 200 m</code></div>
+              <div class="run-step"><small>4 · Compare</small><b>No qualified peer exists</b><p>There is no independent provider comparison inside R90.</p></div>
+              <div class="run-step"><small>5 · Report</small><b>Do not force a cause</b><p>Communicate the sub-outage and affected devices to the CSP and customer.</p><code class="run-math">cause: UNKNOWN</code></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section confidence">
+      <div class="shell">
+        <div class="section-head"><span class="eyebrow">Step 6 · Confirm the cause</span><h2>Say “likely” until another signal proves the cause.</h2><p>VDBSCAN can support that a local sub-outage exists. Ping absence alone cannot prove why it happened.</p></div>
+        <div class="cap"><strong>Current confirmed training labels: 0 power · 0 fibre</strong><span>Confirmation closes the incident and teaches the future model.</span></div>
+        <div class="confidence-grid">
+          <article class="evidence"><h3>Confirm a power cut</h3><p>Use a local power alert, a power sensor, or matching failure and recovery across several providers.</p><div class="chips"><span>power alert</span><span>local power sensor</span><span>providers recover together</span></div></article>
+          <article class="evidence"><h3>Confirm a fibre cut</h3><p>Show that the devices use the same fibre branch, receive a fibre-loss alarm, or get field confirmation.</p><div class="chips"><span>same fibre branch</span><span>fibre-loss alarm</span><span>field confirmation</span></div></article>
+        </div>
+        <div class="no-peer">
+          <strong>Store four fields for every confirmed incident.</strong>
+          <span>outage_id · confirmed_cause · confirmation_source · confirmed_at</span>
+        </div>
+        <p class="plain-rule">After enough linked labels exist, fit a simple regularized model on earlier incidents and test it on later ones. Publish a probability only when calibration, Brier score, precision and recall beat the current rules.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="shell">The clustering and provider thresholds shown here are proposed operating gates. No numeric confidence or physical-cause probability is claimed until confirmed power and fibre incidents are linked and used for calibration.</div></footer>
+</body>
+</html>
