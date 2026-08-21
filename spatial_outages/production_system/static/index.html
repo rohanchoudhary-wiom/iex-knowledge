@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>India outage attribution atlas</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    :root { --ink:#12213f; --muted:#607086; --line:#dce4ee; --blue:#165dcc; --blue-soft:#eaf2ff; --paper:#fff; --page:#f2f5f9; --shadow:0 16px 44px rgba(18,33,63,.14); }
+    * { box-sizing:border-box; }
+    html, body { height:100%; }
+    body { margin:0; overflow:hidden; color:var(--ink); background:var(--page); font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button, input, select { font:inherit; }
+    .shell { display:grid; grid-template-rows:auto 1fr; height:100%; }
+    header { display:flex; gap:20px; align-items:center; justify-content:space-between; padding:14px 20px; color:#fff; background:linear-gradient(120deg,#10234c,#155a87 72%,#0e746d); box-shadow:0 3px 16px rgba(14,31,66,.25); }
+    .brand { display:flex; gap:12px; align-items:center; min-width:0; }
+    .mark { display:grid; flex:0 0 38px; width:38px; height:38px; place-items:center; border:1px solid rgba(255,255,255,.28); border-radius:11px; background:rgba(255,255,255,.1); font-weight:900; }
+    h1 { margin:0; font-size:19px; line-height:1.15; letter-spacing:-.02em; }
+    header p { margin:2px 0 0; color:#d9e8f5; font-size:12px; }
+    .snapshot { color:#d9e8f5; font-size:12px; text-align:right; }
+    main { position:relative; min-height:0; }
+    #map { width:100%; height:100%; background:#dfe9f2; }
+    .panel { position:absolute; z-index:500; top:16px; left:16px; width:min(340px,calc(100% - 32px)); max-height:calc(100% - 32px); overflow:auto; padding:16px; border:1px solid rgba(255,255,255,.9); border-radius:15px; background:rgba(255,255,255,.96); box-shadow:var(--shadow); backdrop-filter:blur(10px); }
+    .panel-head { display:flex; gap:10px; align-items:start; justify-content:space-between; margin-bottom:12px; }
+    .panel h2 { margin:0; font-size:17px; }
+    .mode { display:inline-flex; margin-top:3px; padding:3px 7px; border-radius:999px; color:var(--blue); background:var(--blue-soft); font-size:10px; font-weight:850; letter-spacing:.04em; text-transform:uppercase; }
+    .total { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    label { display:block; color:#34435a; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+    input, select { width:100%; min-height:40px; margin-top:5px; padding:8px 9px; border:1px solid #c9d5e3; border-radius:9px; color:var(--ink); background:#fff; }
+    input:focus, select:focus, button:focus-visible { outline:3px solid rgba(22,93,204,.2); outline-offset:1px; }
+    .full { grid-column:1 / -1; }
+    .actions { display:flex; gap:8px; margin-top:12px; }
+    button { min-height:38px; padding:8px 11px; border:1px solid #bdcce0; border-radius:9px; color:var(--ink); background:#fff; cursor:pointer; font-weight:750; }
+    button:hover { border-color:var(--blue); color:var(--blue); }
+    button.primary { flex:1; border-color:var(--blue); color:#fff; background:var(--blue); }
+    .result { display:flex; gap:10px; align-items:center; margin-top:12px; padding:10px 11px; border-radius:10px; background:#f5f8fc; }
+    .result strong { font-size:20px; line-height:1; }
+    .result span { color:var(--muted); font-size:12px; }
+    .hint { margin:10px 0 0; color:var(--muted); font-size:12px; }
+    .outage-list { display:grid; gap:6px; margin-top:10px; }
+    .outage-row { display:grid; grid-template-columns:9px 1fr auto; gap:9px; align-items:center; width:100%; text-align:left; }
+    .outage-row .dot { width:9px; height:9px; border-radius:50%; background:var(--color); }
+    .outage-row strong, .outage-row small { display:block; }
+    .outage-row small { color:var(--muted); font-size:10px; font-weight:500; }
+    .outage-row b { max-width:120px; color:var(--color); font-size:10px; text-align:right; }
+    .detail-panel { width:min(390px,calc(100% - 32px)); }
+    .detail-panel .panel-head { margin:12px 0; }
+    .detail-grid { padding:10px 0 12px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .popup-grid { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:12px; }
+    .popup-grid span:nth-child(odd) { color:var(--muted); }
+    .device-result { margin-top:10px; padding:10px 11px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    .device-head { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .device-head strong { font-size:12px; }
+    .device-head span { color:var(--muted); font-size:11px; }
+    .device-counts { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+    .device-counts span { padding:6px; border-radius:7px; color:#fff; font-size:10px; font-weight:800; text-align:center; }
+    .device-counts b { display:block; font-size:15px; line-height:1.1; }
+    .evidence { margin-top:10px; padding:10px 11px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    .evidence h3 { margin:0 0 7px; font-size:12px; }
+    .evidence-row + .evidence-row { margin-top:8px; padding-top:8px; border-top:1px solid var(--line); }
+    .evidence-row strong { display:block; font-size:11px; }
+    .evidence-row span { color:var(--muted); font-size:10px; }
+    .provider { display:flex; justify-content:space-between; gap:8px; margin-top:3px; font-size:10px; }
+    .legend { display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:12px; padding-top:11px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+    .legend span::before { content:""; display:inline-block; width:9px; height:9px; margin-right:5px; border-radius:3px; background:var(--color); }
+    .legend.devices span::before { border-radius:50%; }
+    .empty { display:none; margin-top:10px; color:#9a5400; font-size:12px; }
+    .leaflet-popup-content { margin:13px 15px; min-width:210px; }
+    .device-tooltip { width:320px; max-width:calc(100vw - 24px); white-space:normal; }
+    .device-tooltip .popup-grid { grid-template-columns:72px minmax(0,1fr); }
+    .device-tooltip b { overflow-wrap:anywhere; }
+    .popup-title { margin-bottom:7px; font-size:15px; font-weight:850; }
+    .leaflet-control-attribution { font-size:9px; }
+    @media (max-width:650px) {
+      header { padding:11px 13px; }
+      .snapshot { display:none; }
+      .panel { top:10px; left:10px; width:calc(100% - 20px); max-height:46%; padding:13px; }
+      .leaflet-top.leaflet-left { top:48%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><div class="mark" aria-hidden="true">IX</div><div><h1>India outage attribution atlas</h1><p>Post-funnel attribution · last-ping device evidence</p></div></div>
+      <div class="snapshot" id="snapshot">Loading real outage data…</div>
+    </header>
+    <main>
+      <div id="map" role="application" aria-label="Interactive map of evaluated outages across India"></div>
+      <section class="panel" id="overview-panel" aria-labelledby="filters-title">
+        <div class="panel-head"><div><h2 id="filters-title">Outage starts</h2><span class="mode">Evaluated attribution</span></div><span class="total" id="total"></span></div>
+        <div class="fields">
+          <label>Date<input id="date" type="date"></label>
+          <label>Time<input id="time" type="time" step="60"></label>
+          <label>Look back<select id="window"><option value="1">1 hour</option><option value="3">3 hours</option><option value="6" selected>6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></label>
+          <label>Cause<select id="cause"><option value="ALL">All causes</option><option value="ISP_OLT_CSP_SIDE">ISP / OLT CSP side</option><option value="CSP_SPECIFIC_LOCAL">Local CSP-specific</option><option value="FIBRE_CUT">Access fibre</option><option value="PREMISE_POWER">Premise power</option><option value="UNKNOWN">Unknown</option></select></label>
+          <label class="full">CSP<input id="csp" type="search" list="csp-options" placeholder="All CSPs" autocomplete="off"><datalist id="csp-options"></datalist></label>
+        </div>
+        <div class="actions"><button class="primary" id="show">Show outages</button><button id="fit">Fit results</button><button id="india" aria-label="Reset map to India">India</button></div>
+        <div class="result" aria-live="polite"><strong id="count">—</strong><span id="summary">Loading outage evaluations</span></div>
+        <p class="hint">Click an outage marker to inspect its device and provider evidence.</p>
+        <div class="outage-list" id="outage-list" aria-label="Visible outage attributions"></div>
+        <div class="empty" id="empty">No open outage started inside this window. Try a wider lookback.</div>
+        <div class="legend" aria-label="Attribution legend">
+          <span style="--color:#165dcc">ISP / OLT CSP side</span><span style="--color:#7c3aed">Local CSP-specific</span><span style="--color:#d97706">Access fibre</span><span style="--color:#a16207">Premise power</span><span style="--color:#64748b">Unknown</span>
+        </div>
+      </section>
+      <section class="panel detail-panel" id="detail-panel" aria-labelledby="device-title" hidden>
+        <button id="back">← Back to outages</button>
+        <div class="panel-head"><div><h2 id="device-title">Outage detail</h2><span class="mode" id="detail-mode">Device evidence</span></div></div>
+        <div class="popup-grid detail-grid" id="detail-content"></div>
+        <div class="device-result" aria-live="polite">
+          <div class="device-head"><strong>Visible evidence devices</strong><span id="device-note"></span></div>
+          <div class="device-counts"><span style="background:#dc2626"><b id="down-count">—</b>Down</span><span style="background:#138a55"><b id="up-count">—</b>Up</span><span style="background:#64748b"><b id="unknown-count">—</b>Unknown</span></div>
+        </div>
+        <div class="evidence"><h3>Spatial and provider evidence</h3><div id="evidence-list"></div></div>
+        <div class="legend devices" aria-label="Device status legend"><span style="--color:#dc2626">No ping ≥10 min</span><span style="--color:#138a55">Ping &lt;10 min</span><span style="--color:#64748b">No valid ping returned</span><span style="--color:#16a34a">R70</span><span style="--color:#0891b2">R80</span><span style="--color:#165dcc">R90 comparison</span><span style="--color:#d97706">R100 tail</span></div>
+      </section>
+    </main>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    const INDIA=[[6.4,68.1],[37.6,97.5]];
+    const colors={ISP_OLT_CSP_SIDE:'#165dcc',CSP_SPECIFIC_LOCAL:'#7c3aed',FIBRE_CUT:'#d97706',PREMISE_POWER:'#a16207',UNKNOWN:'#64748b'};
+    const labels={ISP_OLT_CSP_SIDE:'ISP / OLT CSP side',CSP_SPECIFIC_LOCAL:'Local CSP-specific',FIBRE_CUT:'Access fibre',PREMISE_POWER:'Premise power',UNKNOWN:'Unknown'};
+    const map=L.map('map',{preferCanvas:true,zoomControl:false,minZoom:4,maxZoom:19,maxBounds:[[1,62],[42,103]],maxBoundsViscosity:.65});
+    L.control.zoom({position:'bottomright'}).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    map.fitBounds(INDIA,{padding:[12,12]});
+    let data=[],layer,deviceLayer,visible=[];
+    const byId=id=>document.getElementById(id);
+    const escapeHtml=value=>String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const score=value=>typeof value==='number'?String(Number(value.toFixed(2))):value;
+    const confidenceText=result=>typeof result.confidence==='number'?`${Math.round(result.confidence*100)}%`:`${({LOW:50,MEDIUM:70,HIGH:90}[result.confidence]||0)}% (${result.confidence})`;
+    const startTime=result=>new Date(new Date(result.evaluated_at)-Number(result.ongoing_time)*1000);
+    const localInput=date=>new Date(date.getTime()+330*60000).toISOString().slice(0,16);
+    const outageCsp=result=>[...new Set(result.devices.filter(device=>device.member).map(device=>device.csp_name&&device.csp_name!==device.csp_id?`${device.csp_name} (${device.csp_id})`:device.csp_id))].join(', ');
+    const located=result=>result.devices.filter(device=>device.latitude!=null&&device.longitude!=null);
+    const center=result=>result.groups[0]?.center||(()=>{const points=located(result);return points.length?[points.reduce((sum,d)=>sum+d.latitude,0)/points.length,points.reduce((sum,d)=>sum+d.longitude,0)/points.length]:null;})();
+    const stateColor=state=>({DOWN:'#dc2626',UP:'#138a55',UNKNOWN:'#64748b'}[state]);
+    const address=value=>{try{const parsed=JSON.parse(value);return [parsed.address,parsed.home,parsed.street,parsed.city,parsed.pincode].filter(Boolean).join(', ')||value;}catch{return value||'Missing';}};
+    const devicePopup=device=>`<div class="popup-title">${escapeHtml(device.device_id)}</div><div class="popup-grid"><span>State</span><b>${device.state}</b><span>Last ping</span><b>${device.last_ping_time?new Date(device.last_ping_time).toLocaleString('en-IN'):'Missing'}</b><span>CSP</span><b>${escapeHtml(device.csp_name||device.csp_id)}</b><span>Address</span><b>${escapeHtml(address(device.address))}</b><span>Posted member</span><b>${device.member?'Yes':'No'}</b></div>`;
+    const ids=(label,values)=>values?.length?`<span>${label}: ${values.map(escapeHtml).join(', ')}</span>`:'';
+    const providerRows=providers=>providers.map(provider=>`<div class="provider"><span>${escapeHtml(provider.csp_id)} · ${escapeHtml(provider.eligibility_reason||'ELIGIBLE')}</span><b>${provider.down}/${provider.eligible} concurrent DOWN · ${Math.round(provider.down_share*100)}%</b></div><span>${provider.up||0} UP · ${provider.nonconcurrent_down||0} non-concurrent DOWN · ${provider.unknown||0} unknown</span>`).join('');
+    function evidenceHtml(result){
+      const signal=result.csp_signal?`<div class="evidence-row"><strong>CSP-wide gate · ${Math.round(result.csp_signal.down_share*100)}% DOWN</strong><span>${result.csp_signal.down}/${result.csp_signal.eligible} DOWN across the full ${escapeHtml(result.csp_signal.csp_id)} denominator · gate ${Math.round(result.csp_signal.gate_threshold*100)}%${result.csp_signal.policy_score!=null?` · policy score ${score(result.csp_signal.policy_score)} (not a probability)`:''}</span></div>`:'';
+      const unknownIds=result.devices.filter(device=>device.state==='UNKNOWN').map(device=>device.device_id);
+      const unknown=ids('No valid batch-ping state',unknownIds);
+      const review=ids('Review/noise device IDs',result.review_device_ids);
+      if(result.rule==='CUSTOMER_V2_MISSING')return `<div class="evidence-row"><strong>Customer V2 coverage failed</strong><span>${result.review_device_ids.length} posted devices were absent from Customer V2.</span>${review}</div>`;
+      const groups=result.groups.map(group=>{
+        const local=group.local_csp_evidence;
+        const localGate=local?`<span>Local CSP gate ${local.matched?'MATCH':'NO MATCH'} · ${local.polygon_devices} R90 devices (need &gt;20) · ${local.peer_devices} peers (need &gt;10) · target ${Math.round(local.target_down_share*100)}% DOWN · peers ${Math.round(local.peer_up_share*100)}% UP</span>`:'';
+        const reasons=group.review_reasons.length?`<span>Review reasons: ${group.review_reasons.map(escapeHtml).join(', ')}</span>`:'';
+        return `<div class="evidence-row"><strong>${escapeHtml(group.sub_outage_id)} · ${group.evidence_grade} · ${labels[group.attribution]}</strong><span>R70 ${group.radii_m.r70} m · R80 ${group.radii_m.r80} m · R90 ${group.radii_m.r90} m · R100 ${group.radii_m.r100} m${group.reclustered?' · re-clustered':''}</span><span>Timing ${escapeHtml(group.timing.source)} · ${group.timing.strongest_10m_count}/${group.member_ids.length} in strongest 10 min · span ${group.timing.failure_span_minutes} min · stability ${group.stability}</span>${localGate}${reasons}${ids('R100 tail IDs',group.tail_device_ids)}${providerRows(group.providers)}</div>`;
+      }).join('');
+      const fallback=!result.groups.length?'<div class="evidence-row"><strong>No current DOWN sub-outage</strong><span>No located DOWN member produced a temporal-spatial component.</span></div>':'';
+      return signal+groups+fallback+`<div class="evidence-row"><strong>Evidence separation</strong><span>Spatial ${escapeHtml(result.spatial_evidence)} · cause ${escapeHtml(result.cause_likelihood)} · confirmation ${escapeHtml(result.confirmation_status)}</span>${unknown}${review}${ids('Recovered posted members',result.recovered_member_ids)}</div>`;
+    }
+    function overviewMarker(result){
+      const point=center(result);
+      if(!point)return null;
+      const items=[L.circleMarker(point,{radius:9,color:'#fff',weight:2,fillColor:colors[result.attribution],fillOpacity:.95})];
+      for(const group of result.groups.filter(group=>group.supported))items.unshift(L.circle(group.center,{radius:Math.max(group.radii_m.r90,20),color:colors[result.attribution],weight:2,fillOpacity:.08}));
+      for(const item of items)item.on('click',()=>showDetail(result));
+      return L.featureGroup(items);
+    }
+    function clearLayers(){
+      if(layer)layer.remove();
+      if(deviceLayer)deviceLayer.remove();
+      layer=deviceLayer=undefined;
+    }
+    function showDetail(result){
+      clearLayers();
+      byId('overview-panel').hidden=true;
+      byId('detail-panel').hidden=false;
+      byId('device-title').textContent=`Outage ${result.outage_id}`;
+      byId('detail-mode').textContent=labels[result.attribution];
+      const down=result.devices.filter(device=>device.state==='DOWN').length;
+      const up=result.devices.filter(device=>device.state==='UP').length;
+      const unknown=result.devices.length-down-up;
+      const policy=result.policy_score==null?'—':score(result.policy_score);
+      byId('detail-content').innerHTML=`<span>Started</span><b>${startTime(result).toLocaleString('en-IN')}</b><span>CSP</span><b>${escapeHtml(outageCsp(result)||'Unknown')}</b><span>Attribution</span><b>${labels[result.attribution]}</b><span>Confidence</span><b>${confidenceText(result)}</b><span>Policy score</span><b>${policy}</b><span>Spatial evidence</span><b>${escapeHtml(result.spatial_evidence)}</b><span>Cause likelihood</span><b>${escapeHtml(result.cause_likelihood)}</b><span>Confirmation</span><b>${escapeHtml(result.confirmation_status)}</b><span>Decision rule</span><b>${escapeHtml(result.rule)}</b><span>Duration</span><b>${Math.round(result.ongoing_time/60).toLocaleString('en-IN')} minutes</b><span>Supported / review groups</span><b>${result.groups.filter(group=>group.supported).length} / ${result.groups.filter(group=>!group.supported).length}</b><span>Review devices</span><b>${result.review_device_ids.length}</b>`;
+      byId('down-count').textContent=down.toLocaleString('en-IN');
+      byId('up-count').textContent=up.toLocaleString('en-IN');
+      byId('unknown-count').textContent=unknown.toLocaleString('en-IN');
+      byId('device-note').textContent=`${result.devices.length.toLocaleString('en-IN')} states from batch device ping`;
+      byId('evidence-list').innerHTML=evidenceHtml(result);
+      const items=[],focus=[];
+      const tailIds=new Set(result.groups.flatMap(group=>group.tail_device_ids));
+      const reviewIds=new Set(result.review_device_ids);
+      for(const group of result.groups){
+        const groupColor=group.supported?'#165dcc':'#64748b';
+        if(group.boundary.length>=3)items.push(L.polygon(group.boundary,{color:groupColor,weight:2,dashArray:group.supported?null:'7 6',fillOpacity:.1}));
+        for(const [radius,color,dash] of [['r70','#16a34a','2 5'],['r80','#0891b2','4 4'],['r90','#165dcc','6 4'],['r100','#d97706','2 6']]){
+          const ring=L.circle(group.center,{radius:Math.max(group.radii_m[radius],20),color:group.supported?color:'#64748b',weight:radius==='r90'?3:1.5,dashArray:dash,fillOpacity:radius==='r90'?.035:0});
+          items.push(ring);if(group.supported&&radius==='r100')focus.push(ring);
+        }
+      }
+      for(const device of located(result)){
+        const border=tailIds.has(device.device_id)?'#d97706':reviewIds.has(device.device_id)?'#64748b':device.member?'#fff':stateColor(device.state);
+        const marker=L.circleMarker([device.latitude,device.longitude],{radius:device.member?6:4,color:border,weight:tailIds.has(device.device_id)||reviewIds.has(device.device_id)?3:device.member?2:1,fillColor:stateColor(device.state),fillOpacity:device.state==='UNKNOWN'?.6:.92}).bindTooltip(devicePopup(device),{sticky:true,direction:'top',className:'device-tooltip'});
+        items.push(marker);if(!result.groups.length&&device.member)focus.push(marker);
+      }
+      deviceLayer=L.featureGroup(items).addTo(map);
+      if(items.length){const bounds=L.featureGroup(focus.length?focus:items).getBounds();map.fitBounds(bounds,{padding:[70,70],maxZoom:18,animate:false});}
+    }
+    function render(fit=false){
+      clearLayers();
+      byId('overview-panel').hidden=false;
+      byId('detail-panel').hidden=true;
+      if(!data.length){
+        visible=[];byId('count').textContent='0';byId('summary').textContent='No open outages in the current source snapshot';byId('outage-list').replaceChildren();byId('empty').style.display='block';map.fitBounds(INDIA,{padding:[12,12]});return;
+      }
+      const end=new Date(`${byId('date').value}T${byId('time').value}:00+05:30`);
+      const start=new Date(end-Number(byId('window').value)*3600000);
+      const cause=byId('cause').value;
+      const csp=byId('csp').value.trim().toLowerCase();
+      visible=data.filter(result=>{const when=startTime(result);return when>start&&when<=end&&(cause==='ALL'||result.attribution===cause)&&(!csp||outageCsp(result).toLowerCase().includes(csp));});
+      const markers=visible.map(overviewMarker).filter(Boolean);
+      layer=L.featureGroup(markers).addTo(map);
+      byId('count').textContent=visible.length.toLocaleString('en-IN');
+      byId('summary').textContent=`open outages${csp?` for ${byId('csp').value.trim()}`:''} started in the previous ${byId('window').value} hours`;
+      byId('outage-list').innerHTML=visible.map((result,index)=>`<button class="outage-row" data-index="${index}" style="--color:${colors[result.attribution]}"><span class="dot" aria-hidden="true"></span><span><strong>Outage ${escapeHtml(result.outage_id)}</strong><small>${escapeHtml(outageCsp(result)||'CSP unknown')} · ${result.policy_score==null?escapeHtml(result.confidence)+' evidence':score(result.policy_score)+' policy score'} · ${escapeHtml(result.rule)}</small></span><b>${labels[result.attribution]}</b></button>`).join('');
+      for(const button of byId('outage-list').querySelectorAll('button'))button.addEventListener('click',()=>showDetail(visible[Number(button.dataset.index)]));
+      byId('empty').style.display=visible.length?'none':'block';
+      if(fit&&markers.length)map.fitBounds(layer.getBounds(),{padding:[70,70],maxZoom:8,animate:false});
+    }
+    fetch('/map-data').then(response=>{if(!response.ok)throw new Error('Attribution data could not be loaded');return response.json();}).then(payload=>{
+      if(payload.status==='error')throw new Error(payload.error||'Real outage dependencies are unavailable');
+      data=payload.results;
+      const latest=new Date(payload.as_of||Math.max(...data.map(result=>new Date(result.evaluated_at)),Date.now()));
+      const local=localInput(latest);
+      byId('date').value=local.slice(0,10);
+      byId('time').value=local.slice(11,16);
+      const refreshed=payload.refreshed_at?new Date(payload.refreshed_at).toLocaleTimeString('en-IN'):'not refreshed';
+      byId('snapshot').textContent=`${data.length.toLocaleString('en-IN')} open outages · ${payload.source} · ${payload.status.toUpperCase()} ${refreshed}`;
+      byId('total').textContent=`${data.length.toLocaleString('en-IN')} total`;
+      for(const csp of [...new Set(data.flatMap(result=>result.devices.map(device=>device.csp_id)))].sort()){
+        const option=document.createElement('option');option.value=csp;byId('csp-options').append(option);
+      }
+      render(true);
+    }).catch(error=>{
+      byId('count').textContent='0';byId('summary').textContent=error.message;byId('empty').style.display='block';
+    });
+    byId('show').addEventListener('click',()=>render(false));
+    byId('fit').addEventListener('click',()=>render(true));
+    byId('india').addEventListener('click',()=>map.fitBounds(INDIA,{padding:[12,12]}));
+    byId('back').addEventListener('click',()=>render(true));
+    for(const id of ['date','time','window','cause','csp'])byId(id).addEventListener('change',()=>render(false));
+  </script>
+</body>
+</html>
