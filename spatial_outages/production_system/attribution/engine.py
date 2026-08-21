@@ -5,7 +5,7 @@ from .spatial import (
     anchored_time_groups,
     cluster_stability,
     convex_hull,
-    distance_m,
+    inside_polygon,
     radius_core,
     radius_profile,
     strongest_window,
@@ -51,7 +51,7 @@ class AttributionEngine:
             csp_states = states(csp_ids)
             csp_down = sum(state == "DOWN" for state, _ in csp_states.values())
             csp_down_share = csp_down / len(csp_ids)
-            gate_threshold = .75 if len(csp_ids) >= 50 else .8
+            gate_threshold = .7
             score = self._csp_signal_confidence(csp_down_share)
             csp_signal = {
                 "csp_id": target_csp,
@@ -61,13 +61,7 @@ class AttributionEngine:
                 "gate_threshold": gate_threshold,
                 "policy_score": score,
             }
-            if csp_down_share >= gate_threshold:
-                devices = self._map_devices(csp_ids, member_ids, cache)
-                return self._result(
-                    outage_id, "ISP_OLT_CSP_SIDE", score, "CSP_DOWN_SHARE", evaluated_at, ongoing_time,
-                    [], devices, missing, [csp_signal], csp_signal=csp_signal, spatial_evidence="NOT_APPLICABLE",
-                    recovered_member_ids=self._recovered(known_member_ids, cache),
-                )
+        csp_match = bool(csp_signal and csp_signal["down_share"] >= csp_signal["gate_threshold"])
 
         member_states = states(known_member_ids)
         located_down = [
@@ -98,7 +92,9 @@ class AttributionEngine:
 
         supported = [group for group in groups if group["supported"]]
         causes = {group["attribution"] for group in supported}
-        if len(causes) == 1 and "UNKNOWN" not in causes:
+        if csp_match:
+            attribution, confidence, rule = "ISP_OLT_CSP_SIDE", csp_signal["policy_score"], "CSP_DOWN_SHARE"
+        elif len(causes) == 1 and "UNKNOWN" not in causes:
             attribution = next(iter(causes))
             confidence = .8 if attribution == "CSP_SPECIFIC_LOCAL" else "MEDIUM"
             rule = next(group["decision_rule"] for group in supported)
@@ -122,7 +118,8 @@ class AttributionEngine:
         spatial_evidence = "SUPPORTED" if supported else "REVIEW"
         return self._result(
             outage_id, attribution, confidence, rule, evaluated_at, ongoing_time, groups, devices,
-            sorted(set(review_ids + missing)), polygon_evidence=local_evidence, csp_signal=csp_signal,
+            sorted(set(([] if csp_match else review_ids) + missing)), parent_evidence=[csp_signal] if csp_signal else None,
+            polygon_evidence=local_evidence, csp_signal=csp_signal,
             spatial_evidence=spatial_evidence, recovered_member_ids=self._recovered(known_member_ids, cache),
         )
 
@@ -160,37 +157,35 @@ class AttributionEngine:
         times = [failure_times[device.device_id] for device in component]
         sources = {failure_sources[device.device_id] for device in component}
         anchor, window_end = min(times), min(times) + timedelta(minutes=30)
-        providers, comparison_ids, local_evidence = [], [], None
+        boundary = convex_hull(core)
+        comparison = [device for device in self.inventory.devices.values() if inside_polygon(device, boundary)]
+        comparison_ids = [device.device_id for device in comparison]
+        comparison_states = states(comparison_ids)
+        providers, local_evidence = [], None
         cause, decision_rule = "UNKNOWN", "SPATIAL_REVIEW"
 
+        for csp_id in sorted({device.csp_id for device in comparison}):
+            ids = [device.device_id for device in comparison if device.csp_id == csp_id]
+            concurrent_down = sum(
+                comparison_states[device_id][0] == "DOWN"
+                and anchor <= self._failure_time(outage_id, device_id, cache)[0] <= window_end
+                for device_id in ids
+            )
+            unknown = sum(comparison_states[device_id][0] == "UNKNOWN" for device_id in ids)
+            nonconcurrent = sum(comparison_states[device_id][0] == "DOWN" for device_id in ids) - concurrent_down
+            providers.append({
+                "csp_id": csp_id,
+                "down": concurrent_down,
+                "up": sum(comparison_states[device_id][0] == "UP" for device_id in ids),
+                "nonconcurrent_down": nonconcurrent,
+                "unknown": unknown,
+                "eligible": len(ids),
+                "down_share": round(concurrent_down / len(ids), 4),
+                "up_share": round(sum(comparison_states[device_id][0] == "UP" for device_id in ids) / len(ids), 4),
+                "qualified": len(ids) >= self.min_provider_devices,
+                "eligibility_reason": "ELIGIBLE" if len(ids) >= self.min_provider_devices else "BELOW_MINIMUM",
+            })
         if supported:
-            comparison = [
-                device for device in self.inventory.devices.values()
-                if device.latitude is not None and distance_m(center, device) <= radii["r90"]
-            ]
-            comparison_ids = [device.device_id for device in comparison]
-            comparison_states = states(comparison_ids)
-            for csp_id in sorted({device.csp_id for device in comparison}):
-                ids = [device.device_id for device in comparison if device.csp_id == csp_id]
-                concurrent_down = sum(
-                    comparison_states[device_id][0] == "DOWN"
-                    and anchor <= self._failure_time(outage_id, device_id, cache)[0] <= window_end
-                    for device_id in ids
-                )
-                unknown = sum(comparison_states[device_id][0] == "UNKNOWN" for device_id in ids)
-                nonconcurrent = sum(comparison_states[device_id][0] == "DOWN" for device_id in ids) - concurrent_down
-                providers.append({
-                    "csp_id": csp_id,
-                    "down": concurrent_down,
-                    "up": sum(comparison_states[device_id][0] == "UP" for device_id in ids),
-                    "nonconcurrent_down": nonconcurrent,
-                    "unknown": unknown,
-                    "eligible": len(ids),
-                    "down_share": round(concurrent_down / len(ids), 4),
-                    "up_share": round(sum(comparison_states[device_id][0] == "UP" for device_id in ids) / len(ids), 4),
-                    "qualified": len(ids) >= self.min_provider_devices,
-                    "eligibility_reason": "ELIGIBLE" if len(ids) >= self.min_provider_devices else "BELOW_MINIMUM",
-                })
             local_evidence = self._local_csp_evidence(target_csp, providers, core, radii, tails)
             if local_evidence and local_evidence["matched"]:
                 cause, decision_rule = "CSP_SPECIFIC_LOCAL", "LOCAL_CSP_ISOLATION"
@@ -203,7 +198,7 @@ class AttributionEngine:
             "member_ids": [device.device_id for device in component],
             "boundary_member_ids": [device.device_id for device in core],
             "tail_device_ids": [device.device_id for device in tails],
-            "boundary": convex_hull(core),
+            "boundary": boundary,
             "center": [round(center[0], 6), round(center[1], 6)],
             "radii_m": radii,
             "supported": supported,

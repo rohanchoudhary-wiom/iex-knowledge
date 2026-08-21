@@ -3,11 +3,11 @@ import math
 from attribution import Device, Inventory
 
 
-DEMO_OUTAGES = [
-    {"outage_id": "DEMO-FIBRE", "devices": [f"FA{index:02d}" for index in range(11)], "ongoing_time": 1_800},
-    {"outage_id": "DEMO-POWER", "devices": [f"PA{index:02d}" for index in range(10)], "ongoing_time": 2_400},
-    {"outage_id": "DEMO-ISP", "devices": [f"IA{index:02d}" for index in range(10)], "ongoing_time": 3_600},
-    {"outage_id": "DEMO-UNKNOWN", "devices": [f"UA{index:02d}" for index in range(10)], "ongoing_time": 900},
+TEST_OUTAGES = [
+    {"outage_id": "TEST-FIBRE", "devices": [f"FA{index:02d}" for index in range(11)], "ongoing_time": 1_800},
+    {"outage_id": "TEST-POWER", "devices": [f"PA{index:02d}" for index in range(10)], "ongoing_time": 2_400},
+    {"outage_id": "TEST-ISP", "devices": [f"IA{index:02d}" for index in range(10)], "ongoing_time": 3_600},
+    {"outage_id": "TEST-UNKNOWN", "devices": [f"UA{index:02d}" for index in range(10)], "ongoing_time": 900},
 ]
 
 
@@ -18,7 +18,7 @@ def _points(count: int, latitude: float, longitude: float, radius: float = .0002
         yield latitude + math.sin(angle) * distance, longitude + math.cos(angle) * distance
 
 
-def demo_data() -> tuple[Inventory, dict[str, int | None]]:
+def test_data() -> tuple[Inventory, dict[str, int | None]]:
     devices: dict[str, Device] = {}
     ages: dict[str, int | None] = {}
 
@@ -45,7 +45,6 @@ def demo_data() -> tuple[Inventory, dict[str, int | None]]:
     power = 19.0760, 72.8777
     add("PA", "CSP-C", 10, power, 900)
     for prefix, csp, age in (("PA", "CSP-C", 60), ("PB", "CSP-D", 900)):
-        start = 10 if prefix == "PA" else 0
         if prefix == "PB":
             add(prefix, csp, 10, power, age)
         for index, (latitude, longitude) in enumerate(_points(2, *power, .00012), 10):
@@ -53,15 +52,14 @@ def demo_data() -> tuple[Inventory, dict[str, int | None]]:
             ages[f"{prefix}{index:02d}"] = 60
         add_far(prefix, csp, 12, 13, power)
 
-    isp = 12.9716, 77.5946
-    add("IA", "CSP-E", 10, isp, 900)
+    add("IA", "CSP-E", 10, (12.9716, 77.5946), 900)
 
-    unknown = 22.5726, 88.3639
-    add("UA", "CSP-F", 10, unknown, 900)
+    unknown = 20.0, 80.0
+    add("UA", "CSP-U", 10, unknown, 900)
     for index, (latitude, longitude) in enumerate(_points(2, *unknown, .00012), 10):
-        devices[f"UA{index:02d}"] = Device(f"UA{index:02d}", "CSP-F", latitude, longitude)
+        devices[f"UA{index:02d}"] = Device(f"UA{index:02d}", "CSP-U", latitude, longitude)
         ages[f"UA{index:02d}"] = 60
-    add_far("UA", "CSP-F", 12, 13, unknown)
-    add("UB", "CSP-G", 5, unknown, None, .00012)
+    add_far("UA", "CSP-U", 12, 13, unknown)
+    add("UB", "CSP-V", 5, unknown, None, .00012)
 
     return Inventory(devices), ages

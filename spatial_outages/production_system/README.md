@@ -39,10 +39,4 @@ Response:
 {"outage_id":2939,"attribution":"UNKNOWN","confidence":"LOW"}
 ```
 
-`GetBatchDevicePing` is called with GET batches of at most 200 device IDs. Its UTC `latestPing` value drives state: less than 10 minutes is UP, at least 10 minutes is DOWN, and missing/invalid/future is UNKNOWN. API failure or truncation fails the refresh closed.
-
-Explicit synthetic test mode remains available only when requested:
-
-```bash
-python app.py --demo
-```
+`GetBatchDevicePing` is called with POST JSON batches of at most 200 device IDs. Its UTC `latestPing` value drives state: less than 10 minutes is UP, at least 10 minutes is DOWN, and missing/invalid/future is UNKNOWN. API failure or truncation fails the refresh closed.

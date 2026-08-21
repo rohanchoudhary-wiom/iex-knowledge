@@ -2,7 +2,6 @@ import io
 import json
 import tempfile
 import unittest
-import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -10,13 +9,13 @@ from unittest.mock import patch
 from app import Service, parse_outage_feed, validate_request
 from attribution import AttributionEngine, Device, Inventory, StatusClient, _normalize_status_response, device_state
 from attribution.spatial import anchored_time_groups, radius_core, radius_profile, strongest_window
-from demo import DEMO_OUTAGES, demo_data
+from test_fixtures import TEST_OUTAGES, test_data
 
 
 class AttributionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.now = datetime(2026, 8, 19, 12, tzinfo=timezone.utc)
-        inventory, ages = demo_data()
+        inventory, ages = test_data()
 
         def statuses(device_ids):
             return {
@@ -27,7 +26,7 @@ class AttributionTests(unittest.TestCase):
         self.engine = AttributionEngine(inventory, statuses)
 
     def evaluate(self, index):
-        outage = DEMO_OUTAGES[index]
+        outage = TEST_OUTAGES[index]
         return self.engine.evaluate(**{
             "outage_id": outage["outage_id"],
             "member_ids": outage["devices"],
@@ -43,7 +42,7 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual("FIBRE_CUT", fibre["attribution"])
         self.assertEqual("PREMISE_POWER", power["attribution"])
         self.assertEqual("ISP_OLT_CSP_SIDE", isp["attribution"])
-        self.assertEqual({"outage_id": "DEMO-UNKNOWN", "attribution": "FIBRE_CUT", "confidence": "LOW"}, unknown)
+        self.assertEqual({"outage_id": "TEST-UNKNOWN", "attribution": "FIBRE_CUT", "confidence": "LOW"}, unknown)
         fibre_member = next(device for device in fibre_detail["devices"] if device["device_id"] == "FA10")
         power_peer = next(device for device in power_detail["devices"] if device["device_id"] == "PB00")
         self.assertTrue(fibre_member["member"])
@@ -79,14 +78,14 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(1, len(tails))
 
     def test_v3_time_provenance_and_recovered_members(self):
-        inventory, ages = demo_data()
+        inventory, ages = test_data()
         v3_time = self.now - timedelta(minutes=12)
-        inventory.outage_failure_times[("DEMO-FIBRE", "FA00")] = v3_time
+        inventory.outage_failure_times[("TEST-FIBRE", "FA00")] = v3_time
         engine = AttributionEngine(inventory, lambda ids: {
             device_id: self.now - timedelta(seconds=ages[device_id]) if ages[device_id] is not None else None
             for device_id in ids
         })
-        _, detail = engine.evaluate("DEMO-FIBRE", DEMO_OUTAGES[0]["devices"], 1800, self.now)
+        _, detail = engine.evaluate("TEST-FIBRE", TEST_OUTAGES[0]["devices"], 1800, self.now)
         self.assertEqual("MIXED_V3_AND_LAST_PING_PROXY", detail["groups"][0]["timing"]["source"])
         self.assertIn("FA10", detail["recovered_member_ids"])
 
@@ -128,7 +127,8 @@ class AttributionTests(unittest.TestCase):
         with patch("attribution.status.urllib.request.urlopen", return_value=io.BytesIO(json.dumps(response).encode())) as urlopen:
             self.assertEqual(response["data"]["devices"][0]["latestPing"], StatusClient("https://status.test")(["D1", "D2"])["D1"])
             request = urlopen.call_args.args[0]
-            self.assertEqual({"deviceIds": ["D1,D2"]}, urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query))
+            self.assertEqual("POST", request.get_method())
+            self.assertEqual({"deviceIds": ["D1", "D2"]}, json.loads(request.data))
             self.assertEqual("IEX-Outage-Attribution/1.0", request.headers["User-agent"])
         self.assertEqual("DOWN", device_state("08/19/2026 11:50:00", self.now)[0])
         self.assertEqual((1, ["D1"], 0), validate_request({"outage_id": 1, "devices": ["D1"], "ongoing_time": 0}))
@@ -138,15 +138,15 @@ class AttributionTests(unittest.TestCase):
 
     def test_real_feed_refresh_is_validated_and_atomic(self):
         as_of = datetime.now(timezone.utc)
-        parsed = parse_outage_feed({"count": 1, "as_of": as_of.timestamp(), "outages": [DEMO_OUTAGES[0]]})
+        parsed = parse_outage_feed({"count": 1, "as_of": as_of.timestamp(), "outages": [TEST_OUTAGES[0]]})
         service = Service(self.engine, lambda: parsed)
         service.refresh()
         payload = service.map_data()
         self.assertEqual("LIVE", payload["source"])
         self.assertEqual("ok", payload["status"])
-        self.assertEqual(["DEMO-FIBRE"], [row["outage_id"] for row in payload["results"]])
+        self.assertEqual(["TEST-FIBRE"], [row["outage_id"] for row in payload["results"]])
         with self.assertRaisesRegex(ValueError, "count"):
-            parse_outage_feed({"count": 2, "as_of": as_of.timestamp(), "outages": [DEMO_OUTAGES[0]]})
+            parse_outage_feed({"count": 2, "as_of": as_of.timestamp(), "outages": [TEST_OUTAGES[0]]})
 
     def test_missing_customer_v2_member_keeps_known_real_state(self):
         inventory = Inventory({"D1": Device("D1", "C1", 28.6, 77.2)})
@@ -179,7 +179,7 @@ class AttributionTests(unittest.TestCase):
             device_id: self.now - timedelta(minutes=11 if int(device_id[1:]) < 15 else 1) for device_id in ids
         })
         public, detail = engine.evaluate("O2", ["S0"], 900, self.now)
-        self.assertEqual({"outage_id": "O2", "attribution": "FIBRE_CUT", "confidence": "LOW"}, public)
+        self.assertEqual({"outage_id": "O2", "attribution": "ISP_OLT_CSP_SIDE", "confidence": .8}, public)
         self.assertEqual(.8, detail["csp_signal"]["policy_score"])
 
     def test_csp_policy_score_boundaries(self):
@@ -189,7 +189,7 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(.8, AttributionEngine._csp_signal_confidence(.75))
         self.assertEqual(.9, AttributionEngine._csp_signal_confidence(.80))
 
-    def test_csp_gate_scales_by_active_connections(self):
+    def test_csp_gate_is_seventy_percent_for_all_connection_sizes(self):
         def evaluate(size, down):
             inventory = Inventory({f"D{index}": Device(f"D{index}", "C1", 28, 77) for index in range(size)})
             engine = AttributionEngine(inventory, lambda ids: {
@@ -198,14 +198,38 @@ class AttributionTests(unittest.TestCase):
             })
             return engine.evaluate("O1", ["D0"], 900, self.now)
 
-        large, large_detail = evaluate(52, 39)
-        small_below, small_detail = evaluate(49, 38)
-        small_match, _ = evaluate(49, 40)
-        self.assertEqual({"outage_id": "O1", "attribution": "ISP_OLT_CSP_SIDE", "confidence": .8}, large)
-        self.assertEqual(.75, large_detail["csp_signal"]["gate_threshold"])
-        self.assertNotEqual("ISP_OLT_CSP_SIDE", small_below["attribution"])
-        self.assertEqual(.8, small_detail["csp_signal"]["gate_threshold"])
-        self.assertEqual({"outage_id": "O1", "attribution": "ISP_OLT_CSP_SIDE", "confidence": .9}, small_match)
+        large_below, large_below_detail = evaluate(100, 69)
+        large_match, large_match_detail = evaluate(100, 70)
+        small_below, small_below_detail = evaluate(10, 6)
+        small_match, small_match_detail = evaluate(10, 7)
+        for result in (large_below, small_below):
+            self.assertNotEqual("ISP_OLT_CSP_SIDE", result["attribution"])
+        for result in (large_match, small_match):
+            self.assertEqual({"outage_id": "O1", "attribution": "ISP_OLT_CSP_SIDE", "confidence": .75}, result)
+        for detail in (large_below_detail, large_match_detail, small_below_detail, small_match_detail):
+            self.assertEqual(.7, detail["csp_signal"]["gate_threshold"])
+
+    def test_csp_gate_still_returns_live_peer_states_inside_polygon(self):
+        devices = {
+            f"T{index}": Device(f"T{index}", "TARGET", 28 + index // 5 * .0002, 77 + index % 5 * .0001)
+            for index in range(10)
+        }
+        devices.update({
+            "P_UP": Device("P_UP", "PEER", 28.0001, 77.0002),
+            "P_DOWN": Device("P_DOWN", "PEER", 28.0001, 77.00025),
+            "P_OUT": Device("P_OUT", "PEER", 29, 78),
+        })
+        engine = AttributionEngine(Inventory(devices), lambda ids: {
+            device_id: self.now - timedelta(minutes=1 if device_id == "P_UP" else 11)
+            for device_id in ids
+        })
+
+        public, detail = engine.evaluate("O1", [f"T{index}" for index in range(10)], 900, self.now)
+
+        peers = {device["device_id"]: device["state"] for device in detail["devices"] if not device["member"]}
+        self.assertEqual("ISP_OLT_CSP_SIDE", public["attribution"])
+        self.assertEqual({"P_DOWN": "DOWN", "P_UP": "UP"}, peers)
+        self.assertTrue(detail["groups"][0]["supported"])
 
     def test_low_confidence_fallback(self):
         self.assertEqual(("FIBRE_CUT", "LOW_CONFIDENCE_SINGLE_CSP_SIGNAL"), AttributionEngine._low_confidence_cause("C1", []))
@@ -223,7 +247,7 @@ class AttributionTests(unittest.TestCase):
             "T10": Device("T10", "TARGET", 28.0001, 77.00015),
             "T11": Device("T11", "TARGET", 28.0002, 77.00025),
         })
-        for index in range(11):
+        for index in range(12):
             devices[f"P{index}"] = Device(f"P{index}", "PEER", 28.00005 + index // 5 * .0001, 77.00005 + index % 5 * .00008)
         for index in range(12, 22):
             devices[f"T{index}"] = Device(f"T{index}", "TARGET", 29 + index * .001, 78)
@@ -237,7 +261,7 @@ class AttributionTests(unittest.TestCase):
 
         self.assertEqual({"outage_id": "LOCAL-CSP", "attribution": "CSP_SPECIFIC_LOCAL", "confidence": .8}, public)
         self.assertEqual("LOCAL_CSP_ISOLATION", detail["rule"])
-        self.assertEqual([23, 11, .8333, .8182], [
+        self.assertEqual([22, 11, .8182, .8182], [
             detail["polygon_evidence"]["polygon_devices"], detail["polygon_evidence"]["peer_devices"],
             detail["polygon_evidence"]["target_down_share"], detail["polygon_evidence"]["peer_up_share"],
         ])
@@ -245,7 +269,7 @@ class AttributionTests(unittest.TestCase):
         self.assertTrue(detail["groups"][0]["supported"])
 
     def test_missing_status_dependency_stays_unknown(self):
-        service = Service(self.engine, lambda: (self.now, [DEMO_OUTAGES[0]]), warning="status unavailable")
+        service = Service(self.engine, lambda: (self.now, [TEST_OUTAGES[0]]), warning="status unavailable")
         service.engine = AttributionEngine(self.engine.inventory, lambda device_ids: {})
         service.refresh()
         payload = service.map_data()

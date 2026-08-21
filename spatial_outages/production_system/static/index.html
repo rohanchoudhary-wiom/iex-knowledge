@@ -229,23 +229,27 @@
       byId('empty').style.display=visible.length?'none':'block';
       if(fit&&markers.length)map.fitBounds(layer.getBounds(),{padding:[70,70],maxZoom:8,animate:false});
     }
-    fetch('/map-data').then(response=>{if(!response.ok)throw new Error('Attribution data could not be loaded');return response.json();}).then(payload=>{
-      if(payload.status==='error')throw new Error(payload.error||'Real outage dependencies are unavailable');
-      data=payload.results;
-      const latest=new Date(payload.as_of||Math.max(...data.map(result=>new Date(result.evaluated_at)),Date.now()));
-      const local=localInput(latest);
-      byId('date').value=local.slice(0,10);
-      byId('time').value=local.slice(11,16);
-      const refreshed=payload.refreshed_at?new Date(payload.refreshed_at).toLocaleTimeString('en-IN'):'not refreshed';
-      byId('snapshot').textContent=`${data.length.toLocaleString('en-IN')} open outages · ${payload.source} · ${payload.status.toUpperCase()} ${refreshed}`;
-      byId('total').textContent=`${data.length.toLocaleString('en-IN')} total`;
-      for(const csp of [...new Set(data.flatMap(result=>result.devices.map(device=>device.csp_id)))].sort()){
-        const option=document.createElement('option');option.value=csp;byId('csp-options').append(option);
-      }
-      render(true);
-    }).catch(error=>{
-      byId('count').textContent='0';byId('summary').textContent=error.message;byId('empty').style.display='block';
-    });
+    function load(fit=false){
+      fetch('/map-data').then(response=>{if(!response.ok)throw new Error('Attribution data could not be loaded');return response.json();}).then(payload=>{
+        if(payload.status==='error')throw new Error(payload.error||'Real outage dependencies are unavailable');
+        data=payload.results;
+        if(fit){
+          const latest=new Date(payload.as_of||Math.max(...data.map(result=>new Date(result.evaluated_at)),Date.now()));
+          const local=localInput(latest);byId('date').value=local.slice(0,10);byId('time').value=local.slice(11,16);
+        }
+        const refreshed=payload.refreshed_at?new Date(payload.refreshed_at).toLocaleTimeString('en-IN'):'not refreshed';
+        byId('snapshot').textContent=`${data.length.toLocaleString('en-IN')} open outages · ${payload.source} · ${payload.status.toUpperCase()} ${refreshed}`;
+        byId('total').textContent=`${data.length.toLocaleString('en-IN')} total`;
+        byId('csp-options').replaceChildren();
+        for(const csp of [...new Set(data.flatMap(result=>result.devices.map(device=>device.csp_id)))].sort()){
+          const option=document.createElement('option');option.value=csp;byId('csp-options').append(option);
+        }
+        render(fit);
+      }).catch(error=>{
+        if(!data.length){byId('count').textContent='0';byId('summary').textContent=error.message;byId('empty').style.display='block';}
+      });
+    }
+    load(true);setInterval(()=>load(false),60000);
     byId('show').addEventListener('click',()=>render(false));
     byId('fit').addEventListener('click',()=>render(true));
     byId('india').addEventListener('click',()=>map.fitBounds(INDIA,{padding:[12,12]}));

@@ -5,13 +5,12 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
 
 from attribution import AttributionEngine, Inventory, StatusClient
-from demo import DEMO_OUTAGES, demo_data
 
 
 ROOT = Path(__file__).resolve().parent
@@ -25,13 +24,12 @@ class Service:
         self,
         engine: AttributionEngine,
         outage_reader: Callable[[], tuple[datetime, list[dict]]] | None = None,
-        source: str = "LIVE",
         warning: str | None = None,
     ) -> None:
-        self.engine, self.outage_reader, self.source = engine, outage_reader, source
+        self.engine, self.outage_reader, self.source = engine, outage_reader, "LIVE"
         self.warning = warning
         self.results, self.lock = {}, threading.Lock()
-        self.status = "demo" if source == "DEMO" else "starting"
+        self.status = "starting"
         self.as_of = self.refreshed_at = self.error = None
 
     def evaluate(self, payload: object) -> dict:
@@ -177,7 +175,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(204, b"", "image/x-icon")
         elif self.path == "/health":
             health = self.server.service.health()
-            self._json(200 if health["status"] in {"ok", "demo"} else 503, health)
+            self._json(200 if health["status"] == "ok" else 503, health)
         elif self.path == "/map-data":
             self._json(200, self.server.service.map_data())
         else:
@@ -188,21 +186,6 @@ class Handler(BaseHTTPRequestHandler):
             payload = self._read_json()
             if self.path == "/outage_attribution":
                 self._json(200, self.server.service.evaluate(payload))
-            elif self.path == "/mock/get_device_status" and self.server.demo:
-                device_ids = payload.get("device_ids") if isinstance(payload, dict) else None
-                if not isinstance(device_ids, list) or any(not isinstance(value, str) for value in device_ids):
-                    raise ValueError("device_ids must be a list")
-                now = datetime.now(timezone.utc)
-                self._json(200, {"devices": [
-                    {
-                        "device_id": device_id,
-                        "last_ping_time": (
-                            (now - timedelta(seconds=self.server.mock_ages[device_id])).isoformat()
-                            if self.server.mock_ages.get(device_id) is not None else None
-                        ),
-                    }
-                    for device_id in device_ids
-                ]})
             else:
                 self._json(404, {"error": "not_found"})
         except ValueError as exc:
@@ -239,8 +222,6 @@ class Handler(BaseHTTPRequestHandler):
 
 class Server(ThreadingHTTPServer):
     service: Service
-    demo: bool
-    mock_ages: dict[str, int | None]
     refresh_seconds: float
     stop_refresh: threading.Event
 
@@ -253,40 +234,22 @@ def build_server(
     outage_url: str,
     refresh_seconds: float,
     inventory_max_age_hours: float,
-    demo: bool,
     allow_missing_status: bool,
 ) -> Server:
     server = Server((host, port), Handler)
-    server.demo, server.refresh_seconds, server.stop_refresh = demo, refresh_seconds, threading.Event()
+    server.refresh_seconds, server.stop_refresh = refresh_seconds, threading.Event()
     try:
-        if demo:
-            inventory, server.mock_ages = demo_data()
-
-            def statuses(device_ids: list[str]) -> dict[str, object]:
-                now = datetime.now(timezone.utc)
-                return {
-                    device_id: (
-                        now - timedelta(seconds=server.mock_ages[device_id])
-                        if server.mock_ages.get(device_id) is not None else None
-                    )
-                    for device_id in device_ids
-                }
-
-            server.service = Service(AttributionEngine(inventory, statuses), source="DEMO")
-            for outage in DEMO_OUTAGES:
-                server.service.evaluate(outage)
-        else:
-            if status_url is None and not allow_missing_status:
-                raise ValueError("--status-url is required")
-            ensure_inventory_fresh(customer_csv, inventory_max_age_hours)
-            inventory, server.mock_ages = Inventory.from_csv(customer_csv), {}
-            warning = None if status_url else "batch device ping is not configured; device states and attribution remain UNKNOWN"
-            server.service = Service(
-                AttributionEngine(inventory, StatusClient(status_url) if status_url else lambda device_ids: {}),
-                lambda: fetch_open_outages(outage_url),
-                warning=warning,
-            )
-            server.service.refresh()
+        if not status_url and not allow_missing_status:
+            raise ValueError("--status-url is required")
+        ensure_inventory_fresh(customer_csv, inventory_max_age_hours)
+        inventory = Inventory.from_csv(customer_csv)
+        warning = None if status_url else "batch device ping is not configured; device states and attribution remain UNKNOWN"
+        server.service = Service(
+            AttributionEngine(inventory, StatusClient(status_url) if status_url else lambda device_ids: {}),
+            lambda: fetch_open_outages(outage_url),
+            warning=warning,
+        )
+        server.service.refresh()
     except BaseException:
         server.server_close()
         raise
@@ -310,7 +273,6 @@ def main() -> None:
     parser.add_argument("--outage-url", default=os.environ.get("OUTAGE_SOURCE_URL", DEFAULT_OUTAGE_URL))
     parser.add_argument("--refresh-seconds", type=float, default=60)
     parser.add_argument("--inventory-max-age-hours", type=float, default=24)
-    parser.add_argument("--demo", action="store_true")
     parser.add_argument("--allow-missing-status", action="store_true")
     args = parser.parse_args()
     if args.refresh_seconds <= 0:
@@ -324,15 +286,12 @@ def main() -> None:
             args.outage_url,
             args.refresh_seconds,
             args.inventory_max_age_hours,
-            args.demo,
             args.allow_missing_status,
         )
     except (OSError, RuntimeError, ValueError) as exc:
         parser.error(str(exc))
-    refresh_thread = None
-    if not args.demo:
-        refresh_thread = threading.Thread(target=refresh_loop, args=(server,), daemon=True)
-        refresh_thread.start()
+    refresh_thread = threading.Thread(target=refresh_loop, args=(server,), daemon=True)
+    refresh_thread.start()
     print(f"serving http://{args.host}:{server.server_port}")
     try:
         server.serve_forever()
@@ -340,8 +299,7 @@ def main() -> None:
         pass
     finally:
         server.stop_refresh.set()
-        if refresh_thread:
-            refresh_thread.join(timeout=2)
+        refresh_thread.join(timeout=2)
         server.server_close()
 
 

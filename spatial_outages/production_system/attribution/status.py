@@ -1,6 +1,5 @@
 import json
 import urllib.error
-import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from typing import Callable
@@ -20,10 +19,15 @@ class StatusClient:
         statuses: dict[str, object] = {}
         for start in range(0, len(device_ids), self.batch_size):
             batch = device_ids[start:start + self.batch_size]
-            separator = "&" if "?" in self.url else "?"
             request = urllib.request.Request(
-                f"{self.url}{separator}{urllib.parse.urlencode({'deviceIds': ','.join(batch)})}",
-                headers={"Accept": "application/json", "User-Agent": "IEX-Outage-Attribution/1.0"},
+                self.url,
+                data=json.dumps({"deviceIds": batch}).encode(),
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "User-Agent": "IEX-Outage-Attribution/1.0",
+                },
+                method="POST",
             )
             try:
                 with urllib.request.urlopen(request, timeout=self.timeout) as response:
