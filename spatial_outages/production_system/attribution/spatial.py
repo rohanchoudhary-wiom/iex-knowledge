@@ -78,6 +78,30 @@ def strongest_window(times: list[datetime], minutes: int = 10) -> int:
     return best
 
 
+def directional_profile(devices: list[Device]) -> dict[str, float]:
+    if len(devices) < 2:
+        return {"length_m": 0.0, "perpendicular_p90_m": 0.0, "directionality_ratio": 0.0}
+    latitude = sum(device.latitude for device in devices) / len(devices)
+    longitude = sum(device.longitude for device in devices) / len(devices)
+    points = [(
+        math.radians(device.longitude - longitude) * EARTH_RADIUS_M * math.cos(math.radians(latitude)),
+        math.radians(device.latitude - latitude) * EARTH_RADIUS_M,
+    ) for device in devices]
+    xx = sum(x * x for x, _ in points) / len(points)
+    yy = sum(y * y for _, y in points) / len(points)
+    xy = sum(x * y for x, y in points) / len(points)
+    root = math.sqrt((xx - yy) ** 2 + 4 * xy ** 2)
+    major, minor = (xx + yy + root) / 2, max(0.0, (xx + yy - root) / 2)
+    angle = math.atan2(2 * xy, xx - yy) / 2
+    along = [x * math.cos(angle) + y * math.sin(angle) for x, y in points]
+    across = sorted(abs(-x * math.sin(angle) + y * math.cos(angle)) for x, y in points)
+    return {
+        "length_m": round(max(along) - min(along), 1),
+        "perpendicular_p90_m": round(across[math.ceil(.9 * len(across)) - 1], 1),
+        "directionality_ratio": round(min(999.0, math.sqrt(major / minor)) if minor > 1e-9 else 999.0 if major else 0.0, 2),
+    }
+
+
 def radius_profile(devices: list[Device]) -> tuple[tuple[float, float], dict[str, float]]:
     center = median(device.latitude for device in devices), median(device.longitude for device in devices)
     distances = sorted(distance_m(center, device) for device in devices)
@@ -123,6 +147,29 @@ def convex_hull(devices: list[Device]) -> list[tuple[float, float]]:
             upper.pop()
         upper.append(point)
     return lower[:-1] + upper[:-1]
+
+
+def comparison_polygon(
+    devices: list[Device], center: tuple[float, float], radius_m: float
+) -> list[tuple[float, float]]:
+    hull = convex_hull(devices)
+    if len(hull) >= 3:
+        return hull
+    latitude, longitude = map(math.radians, center)
+    angular_radius = max(radius_m, 20) / EARTH_RADIUS_M
+    points = []
+    for degrees in range(0, 360, 15):
+        bearing = math.radians(degrees)
+        point_latitude = math.asin(
+            math.sin(latitude) * math.cos(angular_radius)
+            + math.cos(latitude) * math.sin(angular_radius) * math.cos(bearing)
+        )
+        point_longitude = longitude + math.atan2(
+            math.sin(bearing) * math.sin(angular_radius) * math.cos(latitude),
+            math.cos(angular_radius) - math.sin(latitude) * math.sin(point_latitude),
+        )
+        points.append((math.degrees(point_latitude), math.degrees(point_longitude)))
+    return points
 
 
 def inside_polygon(device: Device, polygon: list[tuple[float, float]]) -> bool:

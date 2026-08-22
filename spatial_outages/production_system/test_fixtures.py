@@ -36,10 +36,13 @@ def test_data() -> tuple[Inventory, dict[str, int | None]]:
 
     fibre = 28.6139, 77.2090
     add("FA", "CSP-A", 10, fibre, 900)
-    for index, (latitude, longitude) in enumerate(_points(2, *fibre, .00012), 10):
+    for device_id in ("FA00", "FA01"):
+        device = devices[device_id]
+        devices[device_id] = Device(device.device_id, device.csp_id, device.latitude, device.longitude, "H-1 Gali 2 Delhi")
+    for index, (latitude, longitude) in enumerate(_points(5, *fibre, .00012), 10):
         devices[f"FA{index:02d}"] = Device(f"FA{index:02d}", "CSP-A", latitude, longitude)
         ages[f"FA{index:02d}"] = 60
-    add_far("FA", "CSP-A", 12, 13, fibre)
+    add_far("FA", "CSP-A", 15, 13, fibre)
     add("FB", "CSP-B", 5, fibre, 60, .00012)
 
     power = 19.0760, 72.8777
@@ -56,10 +59,10 @@ def test_data() -> tuple[Inventory, dict[str, int | None]]:
 
     unknown = 20.0, 80.0
     add("UA", "CSP-U", 10, unknown, 900)
-    for index, (latitude, longitude) in enumerate(_points(2, *unknown, .00012), 10):
+    for index, (latitude, longitude) in enumerate(_points(5, *unknown, .00012), 10):
         devices[f"UA{index:02d}"] = Device(f"UA{index:02d}", "CSP-U", latitude, longitude)
         ages[f"UA{index:02d}"] = 60
-    add_far("UA", "CSP-U", 12, 13, unknown)
+    add_far("UA", "CSP-U", 15, 13, unknown)
     add("UB", "CSP-V", 5, unknown, None, .00012)
 
     return Inventory(devices), ages

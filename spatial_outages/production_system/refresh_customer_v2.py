@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Refresh the real Customer V2 attribution snapshot")
+    parser = argparse.ArgumentParser(description="Refresh the real Customer V2 inventory snapshot")
     parser.add_argument("--output", type=Path, default=ROOT.parent / "data/input/outage_devices.csv")
     parser.add_argument("--booking-truth", type=Path, default=ROOT.parents[2] / "booking_truth")
     args = parser.parse_args()

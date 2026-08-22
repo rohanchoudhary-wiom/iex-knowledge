@@ -1,11 +1,12 @@
 import json
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 
 DOWN_AFTER_SECONDS = 10 * 60
+IST = timezone(timedelta(hours=5, minutes=30))
 StatusReader = Callable[[list[str]], dict[str, object]]
 
 
@@ -70,7 +71,7 @@ def timestamp(value: object) -> datetime | None:
         if not isinstance(value, str):
             return None
         try:
-            parsed = datetime.strptime(value, "%m/%d/%Y %H:%M:%S").replace(tzinfo=timezone.utc)
+            parsed = datetime.strptime(value, "%m/%d/%Y %H:%M:%S").replace(tzinfo=IST)
         except ValueError:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
         return parsed.astimezone(timezone.utc) if parsed.tzinfo else None

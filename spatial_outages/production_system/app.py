@@ -4,6 +4,7 @@ import os
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,7 +17,7 @@ from attribution import AttributionEngine, Inventory, StatusClient
 ROOT = Path(__file__).resolve().parent
 DEFAULT_CUSTOMER_CSV = ROOT.parent / "data/input/outage_devices.csv"
 DEFAULT_OUTAGE_URL = "https://router-outage-detection.i2e1.in/get_outage_attribution?status=OPEN"
-DEFAULT_STATUS_URL = "https://remote.i2e1.in/REMOTE/GetBatchDevicePing"
+DEFAULT_STATUS_URL = "https://router-outage-detection.i2e1.in/GetDeviceLivePing"
 
 
 class Service:
@@ -51,7 +52,12 @@ class Service:
                 cache.update(self.engine.status_reader(missing))
             return {device_id: cache.get(device_id) for device_id in device_ids}
 
-        engine = AttributionEngine(self.engine.inventory, snapshot_status, self.engine.min_provider_devices)
+        engine = AttributionEngine(
+            self.engine.inventory,
+            snapshot_status,
+            self.engine.min_provider_devices,
+            self.engine.address_reader,
+        )
         fresh = {}
         for outage in outages:
             public, detail = engine.evaluate(
@@ -142,6 +148,8 @@ def parse_outage_feed(payload: object) -> tuple[datetime, list[dict]]:
 
 
 def fetch_open_outages(url: str, timeout: float = 10) -> tuple[datetime, list[dict]]:
+    if urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get("status") != ["OPEN"]:
+        raise ValueError("outage feed URL must select status=OPEN")
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:

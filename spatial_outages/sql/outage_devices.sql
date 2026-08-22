@@ -143,39 +143,6 @@ registry AS (
   -- ponytail: no valid success in the 15-day snapshot means ineligible.
   WHERE r.plan_expiry_ist > DATEADD(HOUR, 12, s.last_successful_ping_ist)
 ),
-outage_members AS (
-  SELECT
-    o.OUTAGE_ID AS outage_id,
-    UPPER(TRIM(o.DEVICE_ID)) AS device_id,
-    TRIM(o.CSP_ID) AS outage_csp_id,
-    o.MEMBER_FIRST_FAIL_AT_IST AS member_first_fail_at_ist,
-    v.OPENED_AT_IST AS outage_trigger_time
-  FROM PROD_DB.BUSINESS_EFFICIENCY_ROUTER_OUTAGE_DETECTION_PUBLIC.OUTAGE_MEMBER_V3 o
-  JOIN PROD_DB.BUSINESS_EFFICIENCY_ROUTER_OUTAGE_DETECTION_PUBLIC.OUTAGE_V3 v
-    ON v.OUTAGE_ID = o.OUTAGE_ID
-    AND NOT COALESCE(v._FIVETRAN_DELETED, FALSE)
-  WHERE NOT COALESCE(o._FIVETRAN_DELETED, FALSE)
-    AND o.MEMBER_FIRST_FAIL_AT_IST >= DATEADD(
-      DAY, -15, CONVERT_TIMEZONE('Asia/Kolkata', CURRENT_TIMESTAMP())::TIMESTAMP_NTZ
-    )
-    AND o.MEMBER_FIRST_FAIL_AT_IST <
-      CONVERT_TIMEZONE('Asia/Kolkata', CURRENT_TIMESTAMP())::TIMESTAMP_NTZ
-  QUALIFY COUNT(DISTINCT TRIM(o.CSP_ID)) OVER (PARTITION BY o.OUTAGE_ID) = 1
-),
-mapped_outage_members AS (
-  SELECT
-    o.outage_id,
-    o.device_id,
-    r.registry_csp_id AS csp_id,
-    r.csp_name,
-    o.member_first_fail_at_ist,
-    o.outage_trigger_time
-  FROM outage_members o
-  JOIN registry r
-    ON r.device_id = o.device_id
-  WHERE r.registry_csp_id IS NOT NULL
-  QUALIFY COUNT(DISTINCT r.registry_csp_id) OVER (PARTITION BY o.outage_id) = 1
-),
 export_rows AS (
   SELECT
     r.device_id,
@@ -187,10 +154,7 @@ export_rows AS (
     r.latitude,
     r.longitude,
     r.h3_id,
-    o.outage_id,
-    o.member_first_fail_at_ist,
     TRUE AS is_active,
-    o.outage_trigger_time,
     r.plan_expiry_ist,
     r.last_successful_ping_ist,
     b.ping_start_hour_ist,
@@ -203,8 +167,6 @@ export_rows AS (
     COALESCE(p.ping_bits_5, 0) AS ping_bits_5,
     COALESCE(p.ping_bits_6, 0) AS ping_bits_6
   FROM registry r
-  LEFT JOIN mapped_outage_members o
-    ON o.device_id = r.device_id
   LEFT JOIN ping_words p
     ON p.device_id = r.device_id
   CROSS JOIN ping_bounds b
@@ -220,10 +182,7 @@ SELECT DISTINCT
   latitude,
   longitude,
   h3_id,
-  outage_id,
-  member_first_fail_at_ist,
   is_active,
-  outage_trigger_time,
   plan_expiry_ist,
   last_successful_ping_ist,
   ping_start_hour_ist,
@@ -236,4 +195,4 @@ SELECT DISTINCT
   ping_bits_5,
   ping_bits_6
 FROM export_rows
-ORDER BY device_id, outage_id;
+ORDER BY device_id;
